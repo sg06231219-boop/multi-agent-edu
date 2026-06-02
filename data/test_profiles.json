@@ -1,0 +1,56 @@
+{
+  "test_profiles": [
+    {
+      "id": "P001",
+      "name": "零基础文科转行",
+      "background": "英语专业大三学生，没有任何编程经验，对AI行业感兴趣想转行",
+      "experience": "无编程经验",
+      "goal": "从零开始学习Python编程，了解AI基础概念，为转行AI产品经理做准备",
+      "level": "beginner",
+      "expected_diagnosis": {
+        "level_score": 10,
+        "strengths": ["语言能力强", "逻辑思维潜力"],
+        "blind_spots": ["编程基础", "数学基础", "算法思维", "数据结构"],
+        "focus_topic": "Python编程入门"
+      }
+    },
+    {
+      "id": "P002",
+      "name": "有一定基础CS本科生",
+      "background": "计算机科学专业大二学生，学过C语言和数据结构，了解基本算法",
+      "experience": "学过一门语言",
+      "goal": "掌握Python高级特性，学习AI/ML基础，能够完成简单的机器学习项目",
+      "level": "intermediate",
+      "expected_diagnosis": {
+        "level_score": 45,
+        "strengths": ["编程基础", "算法思维", "数据结构"],
+        "blind_spots": ["Python特性", "机器学习理论", "深度学习", "项目实战"],
+        "focus_topic": "机器学习入门"
+      }
+    },
+    {
+      "id": "P003",
+      "name": "有项目经验的进阶者",
+      "background": "软件工程专业大四学生，做过3个Web项目，熟悉Python/JS，想深入AI方向",
+      "experience": "有项目经验",
+      "goal": "深入理解Transformer架构和LLM原理，掌握RAG和Agent开发技术",
+      "level": "advanced",
+      "expected_diagnosis": {
+        "level_score": 75,
+        "strengths": ["Python熟练", "项目经验", "Web开发", "系统设计"],
+        "blind_spots": ["Transformer架构", "模型训练", "RAG技术", "Agent开发"],
+        "focus_topic": "LLM与Agent开发"
+      }
+    }
+  ],
+  "knowledge_coverage": {
+    "beginner": ["Python基础语法", "变量与数据类型", "控制流", "函数", "列表/字典操作"],
+    "intermediate": ["面向对象编程", "异常处理", "文件操作", "NumPy/Pandas基础", "Scikit-learn入门"],
+    "advanced": ["Transformer架构", "PyTorch深度学习", "RAG系统构建", "Agent开发", "模型微调"]
+  },
+  "metrics_targets": {
+    "hallucination_rate": "<5%",
+    "difficulty_match_accuracy": ">=85%",
+    "knowledge_coverage": ">=90%"
+  }
+}
