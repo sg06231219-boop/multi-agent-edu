@@ -18,6 +18,8 @@ from agents.knowledge_gen import KnowledgeGenAgent
 from agents.practice_guide import PracticeGuideAgent
 from agents.reviewer import ReviewerAgent
 from agents.quiz import QuizAgent
+from agents.iteration import IterationAgent
+from agents.socratic import SocraticAgent
 
 # 全局调度器
 orchestrator = None
@@ -32,7 +34,9 @@ async def lifespan(app):
     orchestrator.register("practice_guide", PracticeGuideAgent())
     orchestrator.register("reviewer", ReviewerAgent())
     orchestrator.register("quiz", QuizAgent())
-    print("5 agents registered, system ready")
+    orchestrator.register("iteration", IterationAgent())
+    orchestrator.register("socratic", SocraticAgent())
+    print("7 agents registered, system ready")
     yield
 
 app = FastAPI(title="多智能体协同学习平台", version="2.0.0", lifespan=lifespan)
@@ -119,6 +123,48 @@ async def run_practice(body: dict):
     topic = body.get("topic", "")
     level = body.get("level", "beginner")
     return await orchestrator.run_agent("practice_guide", topic=topic, level=level)
+
+# --- 动态迭代接口 ---
+@app.post("/api/feedback")
+async def submit_feedback(body: dict):
+    """提交测试结果，触发动态迭代决策"""
+    quiz_result = body.get("quiz_result", {})
+    diagnosis = body.get("diagnosis", {})
+    knowledge = body.get("knowledge", {})
+    
+    # 1. 迭代决策
+    iteration = await orchestrator.run_agent("iteration", quiz_result=quiz_result, diagnosis=diagnosis, knowledge=knowledge)
+    
+    # 2. 根据决策生成新内容
+    decision = iteration.get("decision", "consolidate")
+    adjustments = iteration.get("adjustments", {})
+    
+    new_content = None
+    if decision == "simplify":
+        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**diagnosis, "learner_level": "beginner"}, revision_hints=["请大幅简化内容，用最通俗的语言讲解"])
+    elif decision == "advance":
+        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**diagnosis, "learner_level": "advanced"}, revision_hints=["请提供更高难度的进阶内容"])
+    else:
+        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis=diagnosis, revision_hints=adjustments.get("focus_topics", []))
+    
+    return {
+        "iteration_decision": iteration,
+        "new_content": new_content,
+    }
+
+# --- 启发式导学接口 ---
+@app.post("/api/socratic/embed")
+async def embed_socratic(body: dict):
+    """在知识内容中嵌入追问节点"""
+    knowledge = body.get("knowledge", {})
+    return await orchestrator.run_agent("socratic", knowledge=knowledge, mode="embed_questions")
+
+@app.post("/api/socratic/chat")
+async def socratic_chat(body: dict):
+    """导学对话：根据学习者回答进行动态追问"""
+    knowledge = body.get("knowledge", {})
+    conversation_history = body.get("conversation_history", [])
+    return await orchestrator.run_agent("socratic", knowledge=knowledge, conversation_history=conversation_history, mode="respond")
 
 # --- WebSocket（保留兼容） ---
 @app.websocket("/ws/pipeline")
