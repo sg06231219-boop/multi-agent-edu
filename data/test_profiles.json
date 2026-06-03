@@ -41,16 +41,79 @@
         "blind_spots": ["Transformer架构", "模型训练", "RAG技术", "Agent开发"],
         "focus_topic": "LLM与Agent开发"
       }
+    },
+    {
+      "id": "P004",
+      "name": "机械工程师学智能制造",
+      "background": "机械工程专业大三学生，学过CAD/CAM，了解基本电气控制，对智能制造和工业互联网感兴趣",
+      "experience": "有工程软件使用经验，无编程经验",
+      "goal": "学习Python编程和数据处理，了解AI在制造业的应用，为进入智能制造领域做准备",
+      "level": "beginner",
+      "expected_diagnosis": {
+        "level_score": 20,
+        "strengths": ["工程思维", "CAD/CAM经验", "行业知识"],
+        "blind_spots": ["编程基础", "数据分析", "AI算法", "工业互联网协议"],
+        "focus_topic": "Python数据处理基础"
+      }
+    },
+    {
+      "id": "P005",
+      "name": "电工转行学工业互联网",
+      "background": "电气自动化专业高职毕业生，在工厂工作2年，熟悉PLC编程和HMI操作，想转型工业互联网",
+      "experience": "有PLC编程经验，了解工业通信协议(Modbus/OPC UA)",
+      "goal": "学习Web开发和数据采集，能够搭建工业数据采集与可视化平台",
+      "level": "intermediate",
+      "expected_diagnosis": {
+        "level_score": 35,
+        "strengths": ["PLC编程", "工业协议", "现场经验"],
+        "blind_spots": ["Web开发", "数据库", "云平台", "数据分析"],
+        "focus_topic": "Web开发与数据可视化"
+      }
+    },
+    {
+      "id": "P006",
+      "name": "数据分析师学深度学习",
+      "background": "统计学硕士在读，熟练使用R/Python进行数据分析，了解回归/聚类等传统ML方法",
+      "experience": "有Python和R编程经验，熟悉Pandas/Scikit-learn",
+      "goal": "掌握PyTorch深度学习框架，能够训练和部署神经网络模型",
+      "level": "advanced",
+      "expected_diagnosis": {
+        "level_score": 65,
+        "strengths": ["统计分析", "Python熟练", "传统ML", "数据可视化"],
+        "blind_spots": ["深度学习理论", "PyTorch", "GPU训练", "模型部署"],
+        "focus_topic": "深度学习与PyTorch"
+      }
+    },
+    {
+      "id": "P007",
+      "name": "产品经理理解AI原理",
+      "background": "互联网产品经理3年经验，计算机专业本科，但不写代码，需要评估AI产品可行性",
+      "experience": "有计算机基础但长期未编码",
+      "goal": "理解大模型、RAG、Agent等AI技术的原理和局限性，能与技术团队有效沟通",
+      "level": "intermediate",
+      "expected_diagnosis": {
+        "level_score": 40,
+        "strengths": ["产品思维", "用户需求分析", "计算机基础", "项目管理"],
+        "blind_spots": ["最新AI技术", "Prompt Engineering", "模型评估", "技术架构"],
+        "focus_topic": "AI技术原理与产品应用"
+      }
     }
   ],
   "knowledge_coverage": {
-    "beginner": ["Python基础语法", "变量与数据类型", "控制流", "函数", "列表/字典操作"],
-    "intermediate": ["面向对象编程", "异常处理", "文件操作", "NumPy/Pandas基础", "Scikit-learn入门"],
-    "advanced": ["Transformer架构", "PyTorch深度学习", "RAG系统构建", "Agent开发", "模型微调"]
+    "beginner": ["Python基础语法", "变量与数据类型", "控制流", "函数", "列表/字典操作", "文件读写"],
+    "intermediate": ["面向对象编程", "异常处理", "NumPy/Pandas基础", "Scikit-learn入门", "Web开发基础", "API设计"],
+    "advanced": ["Transformer架构", "PyTorch深度学习", "RAG系统构建", "Agent开发", "模型微调", "部署优化"]
   },
   "metrics_targets": {
     "hallucination_rate": "<5%",
     "difficulty_match_accuracy": ">=85%",
     "knowledge_coverage": ">=90%"
+  },
+  "domain_coverage": {
+    "AI/编程": ["python_basics.md", "ai_basics.md", "web_dev.md"],
+    "数据科学": ["data_science.md", "python_basics.md"],
+    "智能制造": ["python_basics.md", "web_dev.md", "data_science.md"],
+    "工业互联网": ["web_dev.md", "data_science.md"],
+    "LLM工程": ["llm_engineering.md", "ai_basics.md"]
   }
 }
