@@ -444,7 +444,7 @@ function renderCard(name,data){
         <div class="score-bar" style="flex:1;min-width:160px"><span class="label">准确度</span><div class="bar"><div class="fill" style="width:${a}%;background:${sc(a)}"></div></div><span class="score-val">${a}</span></div>
       </div>
       <p style="font-size:11px">判定：<strong style="color:${data.verdict==='pass'?'var(--success)':data.verdict==='needs_revision'?'var(--danger)':'var(--warn)'}">${vl(data.verdict)}</strong> · 辩论轮数：${data.debate_rounds||1}</p>
-      ${data.issues&&data.issues.length?`<div class="debate-panel"><strong style="font-size:11px">发现问题：</strong>`+data.issues.map(i=>`<div style="font-size:11px;margin:3px 0;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--danger)">[${i.severity||'?'}]</span> ${i.description}</div>`).join('')+'</div>':''}
+      ${data.issues&&data.issues.length?`<div class="debate-panel"><strong style="font-size:11px">发现问题：</strong>`+data.issues.map(i=>`<div style="font-size:11px;margin:3px 0;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--danger)">[${esc(i.severity||'?')}]</span> ${esc(i.description)}</div>`).join('')+'</div>':''}
       ${data.debate_log?`<div class="debate-panel" style="margin-top:4px"><strong style="font-size:11px">辩论记录：</strong>`+data.debate_log.map(l=>`<div class="debate-round"><span class="round-label">Round ${l.round}</span><div class="verdict" style="color:${l.reviewer_verdict==='pass'?'var(--success)':'var(--danger)'}">${l.reviewer_verdict} · 幻觉${l.hallucination_score}</div></div>`).join('')+'</div>':''}
     `;
   } else if(name==='practice_guide'){
@@ -585,7 +585,9 @@ function vl(v){return{pass:'✅ 通过',pass_with_concerns:'⚠️ 有顾虑通�
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function md2html(md){
   if(!md)return '';
-  return md.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  // 先HTML转义防XSS，再做Markdown替换
+  let s=esc(md);
+  return s.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
 }
 
 // === 学情雷达图 ===
@@ -593,12 +595,14 @@ function renderRadar(data){
   const dims=['编程基础','算法思维','数学基础','项目经验','理论理解','自学能力'];
   const strengths=data.strengths||[];
   const blind=data.blind_spots||[];
-  // 估算各维度分数（基于关键词匹配 + 基础分）
+  // 估算各维度分数（基于关键词匹配 + 基础分 + level_score锚定）
+  const levelScore = data.level_score || 40;
   const scores=dims.map(d=>{
-    let base=40;
-    if(strengths.some(s=>s.includes(d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力',''))))base+=30;
-    if(blind.some(s=>s.includes(d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力',''))))base-=20;
-    return Math.min(100,Math.max(5,base+Math.random()*15-7));
+    let base=levelScore * 0.6 + 10; // 基于诊断分数锚定
+    const keyword = d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力','');
+    if(strengths.some(s=>s.includes(keyword)))base+=25;
+    if(blind.some(s=>s.includes(keyword)))base-=20;
+    return Math.min(100,Math.max(5,Math.round(base)));
   });
   
   const canvas=document.createElement('canvas');
