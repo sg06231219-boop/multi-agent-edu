@@ -244,3 +244,45 @@ result = chain.run({"concept": "机器学习", "style": "通俗易懂"})
 4. **置信度阈值**：低置信度回答标注"不确定"
 5. **知识溯源**：每个答案标注来源文档
 6. **Self-Consistency**：多次采样取一致性高的答案
+
+## 模型量化 (Quantization) [实践]
+
+量化是将模型权重从高精度（FP32/FP16）压缩到低精度（INT8/INT4），减少显存占用、加速推理，同时尽量保持模型精度。
+
+### 量化方法对比 [论文-Dettmers et al., 2022 (LLM.int8())]
+|方法|精度|显存节省|精度损失|适用场景|
+|---|---|---|---|---|
+|FP16|16bit|50%|几乎无|默认训练/推理|
+|INT8|8bit|75%|极小|生产推理|
+|INT4(GPTQ)|4bit|87.5%|小|消费级GPU部署|
+|INT4(AWQ)|4bit|87.5%|更小|高质量4bit|
+|GGUF|4-8bit可调|可变|可调|CPU/混合部署|
+
+### 量化实践 [实践]
+```python
+# 方案1: bitsandbytes INT8量化(最简单)
+from transformers import AutoModelForCausalLM
+model = AutoModelForCausalLM.from_pretrained(
+    "THUDM/chatglm3-6b",
+    load_in_8bit=True,  # INT8量化
+    device_map="auto"
+)
+
+# 方案2: AutoGPTQ INT4量化(更小)
+from auto_gptq import AutoGPTQForCausalLM
+model = AutoGPTQForCausalLM.from_quantized(
+    "model-gptq",
+    device="cuda:0",
+    use_safetensors=True
+)
+
+# 方案3: llama.cpp GGUF格式(CPU友好)
+# 下载GGUF模型文件后直接运行
+# ./llama-cli -m model-Q4_K_M.gguf -p "你好"
+```
+
+### 量化选择建议 [实践]
+- **RTX 4090/5090 (24GB+)**：FP16全精度直接跑7B-13B模型
+- **RTX 3060/4060 (8-12GB)**：INT4量化跑7B模型
+- **纯CPU部署**：GGUF格式 + llama.cpp
+- **移动端/嵌入式**：INT4 + 模型蒸馏
