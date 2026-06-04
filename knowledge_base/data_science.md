@@ -145,7 +145,7 @@ sns.pairplot(df, hue='label')
 
 ### 常用特征工程方法 [教材-《Feature Engineering for Machine Learning》]
 ```python
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder  # Scikit-learn标准预处理
 from sklearn.compose import ColumnTransformer
 
 # 标准化
