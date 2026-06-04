@@ -2,7 +2,7 @@
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
 7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
-v2.2.0 - 新增管理后台 + 会话记录 + Rate Limiting
+v2.3.0 - 新增管理后台 + 会话记录 + Rate Limiting
 """
 import os
 import json
@@ -123,7 +123,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="2.2.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="2.3.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
