@@ -93,11 +93,11 @@ class Orchestrator:
                 review["needs_revision"] = False
                 return review
 
+            # 修订内容后继续下一轮辩论
             if round_num < max_rounds:
-                review["needs_revision"] = True
-                review["debate_rounds"] = round_num
-                review["debate_log"] = debate_log
-                return review
+                revision_hints = [i.get("description", "") for i in issues if isinstance(i, dict)]
+                revised = await self.run_agent("knowledge_gen", diagnosis={}, revision_hints=revision_hints)
+                current_content = revised.get("content", current_content)
 
         review["debate_rounds"] = max_rounds
         review["debate_log"] = debate_log
@@ -143,12 +143,15 @@ class Orchestrator:
                     review["needs_revision"] = False
                     break
 
+                # 修订内容后继续下一轮辩论
                 if round_num < self.debate_rounds:
-                    review["needs_revision"] = True
-                    review["debate_rounds"] = round_num
-                    review["debate_log"] = debate_log
-                    break
+                    revision_hints = [i.get("description", "") for i in issues if isinstance(i, dict)]
+                    revised = await self.run_agent("knowledge_gen", diagnosis=diagnosis, revision_hints=revision_hints)
+                    current_content = revised.get("content", current_content)
+                    yield {"type": "agent_start", "agent": "knowledge_gen", "step": f"3r{round_num}"}
+                    yield {"type": "agent_done", "agent": "knowledge_gen", "step": f"3r{round_num}", "result": revised}
             else:
+                # 所有辩论轮次用完
                 review["debate_rounds"] = self.debate_rounds
                 review["debate_log"] = debate_log
                 review["needs_revision"] = hallucination_score >= 40
