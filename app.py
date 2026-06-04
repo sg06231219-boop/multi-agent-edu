@@ -8,7 +8,9 @@ import json
 import asyncio
 import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,11 +41,13 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="2.1.0", lifespan=lifespan)
 
+# CORS - 生产环境应限制域名
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,23 +59,59 @@ async def index():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
+# --- 请求模型 ---
+class LearnerProfile(BaseModel):
+    background: str = Field(default="", max_length=500)
+    experience: str = Field(default="无")
+    goal: str = Field(default="", max_length=200)
+    level: str = Field(default="beginner", pattern="^(beginner|intermediate|advanced)$")
+
+class StartRequest(BaseModel):
+    profile: LearnerProfile = Field(default_factory=LearnerProfile)
+
+class StreamRequest(BaseModel):
+    profile: LearnerProfile = Field(default_factory=LearnerProfile)
+
+class FeedbackRequest(BaseModel):
+    quiz_result: dict = Field(default_factory=dict)
+    diagnosis: dict = Field(default_factory=dict)
+    knowledge: dict = Field(default_factory=dict)
+
+class SocraticChatRequest(BaseModel):
+    knowledge: dict = Field(default_factory=dict)
+    conversation_history: list = Field(default_factory=list, max_length=50)
+
+class ReviewRequest(BaseModel):
+    content: str = Field(default="", max_length=10000)
+    source_refs: list = Field(default_factory=list)
+
 # --- API路由 ---
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "agents": orchestrator.list_agents() if orchestrator else []}
+    agents_list = orchestrator.list_agents() if orchestrator else []
+    has_api_key = bool(os.environ.get("ZHIPUAI_API_KEY", ""))
+    return {
+        "status": "ok" if has_api_key else "degraded",
+        "agents": agents_list,
+        "api_key_configured": has_api_key,
+        "version": "2.1.0",
+    }
 
 @app.post("/api/start")
-async def start_session(body: dict):
+async def start_session(body: StartRequest):
     """启动学习会话（全流程，等待完成后返回）"""
-    learner_profile = body.get("profile", {})
-    result = await orchestrator.run_full_pipeline(learner_profile)
+    learner_profile = body.profile.model_dump()
+    try:
+        result = await orchestrator.run_full_pipeline(learner_profile)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return result
 
 # --- SSE 流式接口 ---
 @app.post("/api/stream")
-async def stream_pipeline(body: dict):
+async def stream_pipeline(body: StreamRequest):
     """SSE流式接口：逐步推送每个Agent的执行状态和结果"""
-    profile = body.get("profile", {})
+    profile = body.profile.model_dump()
     
     async def event_generator():
         try:
@@ -97,55 +137,75 @@ async def stream_pipeline(body: dict):
 
 # --- 单步Agent API ---
 @app.post("/api/diagnosis")
-async def run_diagnosis(body: dict):
-    profile = body.get("profile", {})
-    return await orchestrator.run_agent("diagnosis", profile=profile)
+async def run_diagnosis(body: StartRequest):
+    profile = body.profile.model_dump()
+    try:
+        return await orchestrator.run_agent("diagnosis", profile=profile)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/api/generate")
 async def run_generate(body: dict):
     diagnosis = body.get("diagnosis", {})
-    return await orchestrator.run_agent("knowledge_gen", diagnosis=diagnosis)
+    if not isinstance(diagnosis, dict):
+        raise HTTPException(status_code=422, detail="diagnosis must be a dict")
+    try:
+        return await orchestrator.run_agent("knowledge_gen", diagnosis=diagnosis)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/api/review")
-async def run_review(body: dict):
-    content = body.get("content", "")
-    source_refs = body.get("source_refs", [])
-    return await orchestrator.run_agent("reviewer", content=content, source_refs=source_refs)
+async def run_review(body: ReviewRequest):
+    try:
+        return await orchestrator.run_agent("reviewer", content=body.content, source_refs=body.source_refs)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/api/quiz")
 async def run_quiz(body: dict):
     knowledge = body.get("knowledge", {})
     difficulty = body.get("difficulty", "medium")
-    return await orchestrator.run_agent("quiz", knowledge=knowledge, difficulty=difficulty)
+    if difficulty not in ("easy", "medium", "hard", "beginner", "intermediate", "advanced"):
+        difficulty = "medium"
+    try:
+        return await orchestrator.run_agent("quiz", knowledge=knowledge, difficulty=difficulty)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/api/practice")
 async def run_practice(body: dict):
-    topic = body.get("topic", "")
+    topic = str(body.get("topic", ""))[:200]
     level = body.get("level", "beginner")
-    return await orchestrator.run_agent("practice_guide", topic=topic, level=level)
+    if level not in ("beginner", "intermediate", "advanced"):
+        level = "beginner"
+    try:
+        return await orchestrator.run_agent("practice_guide", topic=topic, level=level)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 # --- 动态迭代接口 ---
 @app.post("/api/feedback")
-async def submit_feedback(body: dict):
+async def submit_feedback(body: FeedbackRequest):
     """提交测试结果，触发动态迭代决策"""
-    quiz_result = body.get("quiz_result", {})
-    diagnosis = body.get("diagnosis", {})
-    knowledge = body.get("knowledge", {})
-    
-    # 1. 迭代决策
-    iteration = await orchestrator.run_agent("iteration", quiz_result=quiz_result, diagnosis=diagnosis, knowledge=knowledge)
+    try:
+        iteration = await orchestrator.run_agent("iteration", quiz_result=body.quiz_result, diagnosis=body.diagnosis, knowledge=body.knowledge)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     
     # 2. 根据决策生成新内容
     decision = iteration.get("decision", "consolidate")
     adjustments = iteration.get("adjustments", {})
     
     new_content = None
-    if decision == "simplify":
-        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**diagnosis, "learner_level": "beginner"}, revision_hints=["请大幅简化内容，用最通俗的语言讲解"])
-    elif decision == "advance":
-        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**diagnosis, "learner_level": "advanced"}, revision_hints=["请提供更高难度的进阶内容"])
-    else:
-        new_content = await orchestrator.run_agent("knowledge_gen", diagnosis=diagnosis, revision_hints=adjustments.get("focus_topics", []))
+    try:
+        if decision == "simplify":
+            new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**body.diagnosis, "learner_level": "beginner"}, revision_hints=["请大幅简化内容，用最通俗的语言讲解"])
+        elif decision == "advance":
+            new_content = await orchestrator.run_agent("knowledge_gen", diagnosis={**body.diagnosis, "learner_level": "advanced"}, revision_hints=["请提供更高难度的进阶内容"])
+        else:
+            new_content = await orchestrator.run_agent("knowledge_gen", diagnosis=body.diagnosis, revision_hints=adjustments.get("focus_topics", []))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     
     return {
         "iteration_decision": iteration,
@@ -157,14 +217,20 @@ async def submit_feedback(body: dict):
 async def embed_socratic(body: dict):
     """在知识内容中嵌入追问节点"""
     knowledge = body.get("knowledge", {})
-    return await orchestrator.run_agent("socratic", knowledge=knowledge, mode="embed_questions")
+    if not isinstance(knowledge, dict):
+        raise HTTPException(status_code=422, detail="knowledge must be a dict")
+    try:
+        return await orchestrator.run_agent("socratic", knowledge=knowledge, mode="embed_questions")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/api/socratic/chat")
-async def socratic_chat(body: dict):
+async def socratic_chat(body: SocraticChatRequest):
     """导学对话：根据学习者回答进行动态追问"""
-    knowledge = body.get("knowledge", {})
-    conversation_history = body.get("conversation_history", [])
-    return await orchestrator.run_agent("socratic", knowledge=knowledge, conversation_history=conversation_history, mode="respond")
+    try:
+        return await orchestrator.run_agent("socratic", knowledge=body.knowledge, conversation_history=body.conversation_history, mode="respond")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 # --- WebSocket（保留兼容） ---
 @app.websocket("/ws/pipeline")
