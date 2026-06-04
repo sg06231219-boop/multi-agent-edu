@@ -1,0 +1,199 @@
+{
+  "report_title": "多智能体协同学习平台 - 评测实验报告",
+  "competition": "挑战杯揭榜挂帅擂台赛 XH-202630",
+  "timestamp": "2026-06-04 17:38:39",
+  "version": "2.2.0",
+  "metrics": {
+    "1_knowledge_coverage": {
+      "metric": "核心知识点覆盖率",
+      "target": "≥90%",
+      "result": "100.0%",
+      "pass": true,
+      "methodology": "对5个领域知识库(python_basics/ai_basics/web_dev/data_science/llm_engineering)逐一匹配80个核心知识点，统计命中比例",
+      "details": {
+        "ai_basics.md": {
+          "covered": 20,
+          "total": 20,
+          "rate": 100.0,
+          "covered_list": [
+            "机器学习",
+            "深度学习",
+            "神经网络",
+            "监督学习",
+            "无监督学习",
+            "强化学习",
+            "卷积神经网络",
+            "循环神经网络",
+            "Transformer",
+            "损失函数",
+            "梯度下降",
+            "过拟合",
+            "正则化",
+            "交叉验证",
+            "自然语言处理",
+            "计算机视觉",
+            "模型评估",
+            "精确率",
+            "召回率",
+            "F1"
+          ],
+          "missing_list": []
+        },
+        "data_science.md": {
+          "covered": 12,
+          "total": 12,
+          "rate": 100.0,
+          "covered_list": [
+            "NumPy",
+            "Pandas",
+            "Matplotlib",
+            "数据清洗",
+            "特征工程",
+            "数据可视化",
+            "统计分析",
+            "Scikit-learn",
+            "数据预处理",
+            "回归分析",
+            "分类",
+            "聚类"
+          ],
+          "missing_list": []
+        },
+        "llm_engineering.md": {
+          "covered": 14,
+          "total": 14,
+          "rate": 100.0,
+          "covered_list": [
+            "RAG",
+            "Agent",
+            "Prompt Engineering",
+            "微调",
+            "幻觉防控",
+            "知识溯源",
+            "向量数据库",
+            "Embedding",
+            "Few-shot",
+            "Chain-of-Thought",
+            "RLHF",
+            "LoRA",
+            "量化",
+            "部署"
+          ],
+          "missing_list": []
+        },
+        "python_basics.md": {
+          "covered": 18,
+          "total": 18,
+          "rate": 100.0,
+          "covered_list": [
+            "变量",
+            "数据类型",
+            "字符串",
+            "列表",
+            "字典",
+            "元组",
+            "条件语句",
+            "循环",
+            "函数",
+            "类",
+            "继承",
+            "模块",
+            "异常处理",
+            "文件操作",
+            "列表推导式",
+            "装饰器",
+            "生成器",
+            "异步"
+          ],
+          "missing_list": []
+        },
+        "web_dev.md": {
+          "covered": 16,
+          "total": 16,
+          "rate": 100.0,
+          "covered_list": [
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "DOM",
+            "HTTP",
+            "RESTful",
+            "前端框架",
+            "后端框架",
+            "数据库",
+            "API",
+            "响应式设计",
+            "SSE",
+            "WebSocket",
+            "Docker",
+            "安全",
+            "性能优化"
+          ],
+          "missing_list": []
+        }
+      }
+    },
+    "2_hallucination_rate": {
+      "metric": "专业知识谬误率（幻觉率）",
+      "target": "<5%",
+      "result": "待在线评测",
+      "pass": null,
+      "methodology": "由审核Agent(reviewer)通过多轮辩论机制交叉验证生成内容，输出0-100幻觉分数；分数<5视为通过",
+      "note": "需要AI API在线运行，本地fallback数据幻觉分数为0（预置高质量内容）"
+    },
+    "3_difficulty_adaptation": {
+      "metric": "学习者画像-资源难度适配准确率",
+      "target": "≥85%",
+      "result": "待在线评测",
+      "pass": null,
+      "methodology": "3组差异化学习者画像(beginner/intermediate/advanced)→生成内容→检查难度标签与画像水平匹配度",
+      "note": "需要AI API在线运行"
+    }
+  },
+  "test_data": {
+    "profiles_count": 7,
+    "levels": [
+      "beginner",
+      "intermediate",
+      "advanced"
+    ],
+    "domains": [
+      "Python编程",
+      "人工智能",
+      "Web开发",
+      "数据科学",
+      "大模型应用"
+    ],
+    "knowledge_base_files": 5,
+    "knowledge_base_total_size_kb": 37.2
+  },
+  "scoring_alignment": {
+    "completeness_30pts": {
+      "full_pipeline": "7个Agent全流程闭环(诊断→生成→审核→实操→测试→迭代→导学)",
+      "debate_mechanism": "2轮辩论交叉验证，幻觉分数<20通过",
+      "deployment": "Render线上部署，7个Agent全部注册",
+      "score_estimate": "25-30分"
+    },
+    "innovation_25pts": {
+      "multi_agent_debate": "生成Agent与审核Agent辩论机制消除幻觉",
+      "socratic_guidance": "苏格拉底式追问导学打破静态资源单向输入",
+      "dynamic_iteration": "基于答题正确率的动态难度调整闭环",
+      "knowledge_traceability": "所有知识条目标注来源[教材]/[论文]/[官方]/[实践]",
+      "score_estimate": "18-22分"
+    },
+    "user_experience_15pts": {
+      "realtime_sse": "SSE流式推送Agent执行过程，实时可视化",
+      "visual_report": "学情雷达图+难度匹配曲线+学习路径规划图",
+      "admin_panel": "管理员后台监控Agent状态和会话",
+      "score_estimate": "10-13分"
+    },
+    "practical_value_30pts": {
+      "knowledge_coverage": "100.0% (目标≥90%)",
+      "hallucination_rate": "待评测 (目标<5%)",
+      "difficulty_adaptation": "待评测 (目标≥85%)",
+      "test_cases": "7组差异化学习者画像(3种水平)",
+      "domain_coverage": "5个垂直领域",
+      "score_estimate": "22-27分"
+    }
+  }
+}
