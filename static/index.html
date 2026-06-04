@@ -230,7 +230,7 @@ const AGENT_ICONS={diagnosis:'🔍',knowledge_gen:'📚',reviewer:'⚖️',pract
 let agentResults={};
 let timerInterval=null;
 let startTime=0;
-let eventSource=null;
+let abortController=null;  // 用于中断SSE fetch
 let quizData=null;
 
 // === 日志 ===
@@ -308,11 +308,15 @@ function startPipeline(){
   log('🚀 启动全流程协同调度…','info');
   startTimer();
 
+  // 创建AbortController用于停止
+  abortController=new AbortController();
+
   // 用SSE接收实时事件
   fetch('/api/stream',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({profile})
+    body:JSON.stringify({profile}),
+    signal:abortController.signal
   }).then(response=>{
     const reader=response.body.getReader();
     const decoder=new TextDecoder();
@@ -332,13 +336,15 @@ function startPipeline(){
         }
         read();
       }).catch(e=>{
-        log('连接异常: '+e.message,'error');
+        if(e.name==='AbortError'){log('⏹ 请求已中止','warn');}
+        else{log('连接异常: '+e.message,'error');}
         stopTimer();onComplete();
       });
     }
     read();
   }).catch(e=>{
-    log('启动失败: '+e.message,'error');
+    if(e.name==='AbortError'){log('⏹ 请求已中止','warn');}
+    else{log('启动失败: '+e.message,'error');}
     stopTimer();onComplete();
   });
 }
@@ -349,7 +355,7 @@ function onComplete(){
 }
 
 function stopPipeline(){
-  if(eventSource)eventSource.close();
+  if(abortController){abortController.abort();abortController=null;}
   stopTimer();onComplete();
   log('⏹ 用户手动停止','warn');
 }
