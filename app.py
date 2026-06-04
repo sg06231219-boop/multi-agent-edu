@@ -1,7 +1,7 @@
 """
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
-6个Agent协同：诊断→生成→审核→测试→迭代
+7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
 """
 import os
 import json
@@ -238,13 +238,18 @@ async def ws_pipeline(websocket: WebSocket):
     await websocket.accept()
     try:
         data = await websocket.receive_json()
-        profile = data.get("profile", {})
+        profile = data.get("profile", {}) if isinstance(data, dict) else {}
         await websocket.send_json({"type": "start", "message": "开始多智能体协同调度", "profile": profile})
         async for event in orchestrator.run_streaming(profile):
             await websocket.send_json(event)
         await websocket.send_json({"type": "complete", "message": "全流程完成"})
     except WebSocketDisconnect:
         pass
+    except RuntimeError as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
