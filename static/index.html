@@ -168,6 +168,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('reviewer')">⚖️ 内容审核</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('practice_guide')">🛠️ 实操指南</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('quiz')">📝 分阶测试</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('iteration')">🔄 动态迭代</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('socratic')">💭 启发式导学</button>
     </div>
   </div>
 </div>
@@ -189,6 +191,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
       <div class="agent-node" id="nd-reviewer"><div class="icon">⚖️</div><div class="name">审核裁判</div><div class="status">等待中</div></div>
       <div class="agent-node" id="nd-practice_guide"><div class="icon">🛠️</div><div class="name">实操指南</div><div class="status">等待中</div></div>
       <div class="agent-node" id="nd-quiz"><div class="icon">📝</div><div class="name">分阶测试</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-iteration"><div class="icon">🔄</div><div class="name">动态迭代</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-socratic"><div class="icon">💭</div><div class="name">启发式导学</div><div class="status">等待中</div></div>
     </div>
   </div>
 
@@ -197,7 +201,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <span class="pipe-step" data-s="2">② 生成</span><span class="pipe-arrow" data-a="2">→</span>
     <span class="pipe-step" data-s="3">③ 审核</span><span class="pipe-arrow" data-a="3">→</span>
     <span class="pipe-step" data-s="4">④ 实操</span><span class="pipe-arrow" data-a="4">→</span>
-    <span class="pipe-step" data-s="5">⑤ 测验</span>
+    <span class="pipe-step" data-s="5">⑤ 测验</span><span class="pipe-arrow" data-a="5">→</span>
+    <span class="pipe-step" data-s="6">⑥ 迭代</span><span class="pipe-arrow" data-a="6">→</span>
+    <span class="pipe-step" data-s="7">⑦ 导学</span>
   </div>
 
   <div class="log-panel" id="logPanel">
@@ -216,9 +222,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 </div>
 
 <script>
-const AGENTS=['diagnosis','knowledge_gen','reviewer','practice_guide','quiz'];
-const AGENT_LABELS={diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核裁判',practice_guide:'实操指南',quiz:'分阶测试'};
-const AGENT_ICONS={diagnosis:'🔍',knowledge_gen:'📚',reviewer:'⚖️',practice_guide:'🛠️',quiz:'📝'};
+const AGENTS=['diagnosis','knowledge_gen','reviewer','practice_guide','quiz','iteration','socratic'];
+const AGENT_LABELS={diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核裁判',practice_guide:'实操指南',quiz:'分阶测试',iteration:'动态迭代',socratic:'启发式导学'};
+const AGENT_ICONS={diagnosis:'🔍',knowledge_gen:'📚',reviewer:'⚖️',practice_guide:'🛠️',quiz:'📝',iteration:'🔄',socratic:'💭'};
 
 let agentResults={};
 let timerInterval=null;
@@ -297,7 +303,7 @@ function startPipeline(){
   document.getElementById('btnStart').disabled=true;
   document.getElementById('btnStop').style.display='block';
   AGENTS.forEach(n=>setNode(n,''));
-  [1,2,3,4,5].forEach(s=>setPipe(s,null));
+  [1,2,3,4,5,6,7].forEach(s=>setPipe(s,null));
   log('🚀 启动全流程协同调度…','info');
   startTimer();
 
@@ -448,6 +454,42 @@ function renderCard(name,data){
   } else if(name==='quiz'){
     quizData=data;
     html=renderQuiz(data);
+  } else if(name==='iteration'){
+    const dec=data.decision||'consolidate';
+    const decLabel=data.decision_label||'巩固强化';
+    const decColor=dec==='simplify'?'var(--warn)':dec==='advance'?'var(--success)':'var(--accent)';
+    html=`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="padding:8px 16px;border-radius:8px;background:${decColor};color:#000;font-weight:800;font-size:14px">${decLabel}</div>
+        <div style="font-size:12px">正确率 <strong>${data.accuracy||0}%</strong> &middot; ${data.correct_count||0}/${data.total_questions||0}题</div>
+      </div>
+      <p style="font-size:11px;margin:4px 0;color:var(--muted)">${data.reason||''}</p>
+      ${data.adjustments?`
+      <div style="margin:6px 0;padding:8px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+        <p style="font-size:11px"><strong>难度调整：</strong>${(data.adjustments.difficulty_shift||0)>0?'+':''}${data.adjustments.difficulty_shift||0}</p>
+        <p style="font-size:11px;margin-top:3px"><strong>重点关注：</strong>${(data.adjustments.focus_topics||[]).join('、')}</p>
+        ${data.adjustments.skip_topics&&data.adjustments.skip_topics.length?`<p style="font-size:11px;margin-top:3px"><strong>可跳过：</strong>${data.adjustments.skip_topics.join('、')}</p>`:''}
+        <p style="font-size:11px;margin-top:3px"><strong>教学方式：</strong>${data.adjustments.new_approach||'-'}</p>
+      </div>`:''}
+      ${data.next_steps?data.next_steps.map(s=>`<div style="font-size:11px;margin:3px 0;padding:3px 8px;border-left:2px solid var(--accent)"><strong>Step ${s.step}:</strong> ${s.action} &rarr; ${s.agent} (${s.description})</div>`).join(''):''}
+    `;
+    document.getElementById('mIter').textContent=decLabel;
+  } else if(name==='socratic'){
+    const sections=data.sections||[];
+    html=`
+      <p style="font-size:12px;margin-bottom:6px"><strong>${data.title||'启发式导学'}</strong></p>
+      ${sections.map((s,i)=>`
+      <div style="margin:8px 0;padding:10px;background:var(--bg);border-radius:7px;border:1px solid var(--border);border-left:3px solid var(--accent2)">
+        <div style="font-size:11px;margin-bottom:4px">${s.content||''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--accent2);margin:4px 0">\u{1F4AD} ${s.question||''}</div>
+        <div style="font-size:10px;color:var(--muted);margin:2px 0">\u{1F4A1} 提示：${s.hint||''}</div>
+        <div style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(108,92,231,.15);color:var(--accent2);margin-top:3px">${{understanding:'理解层',application:'应用层',analysis:'分析层',evaluation:'评价层'}[s.depth]||s.depth||'?'}</div>
+        ${s.follow_ups?`<div style="font-size:10px;color:var(--muted);margin-top:4px">追问方向：${s.follow_ups.join(' / ')}</div>`:''}
+        <button class="btn" style="margin-top:6px;background:rgba(108,92,231,.15);color:var(--accent2);font-size:10px;padding:4px 10px;border:1px solid var(--accent2)" onclick="startSocraticChat(${i})">\u{1F4AC} 开始对话</button>
+        <div id="socratic-chat-${i}" style="display:none;margin-top:8px"></div>
+      </div>`).join('')}
+      ${data.reflection_prompts?`<div style="margin-top:8px;padding:8px;background:rgba(0,212,170,.06);border-radius:7px;border:1px solid var(--border)"><p style="font-size:11px;font-weight:700;color:var(--accent)">\u{1F504} 反思性问题</p>${data.reflection_prompts.map(p=>`<p style="font-size:11px;margin:3px 0">&bull; ${p}</p>`).join('')}</div>`:''}
+    `;
   }
 
   const card=document.createElement('div');
@@ -456,7 +498,9 @@ function renderCard(name,data){
   card.innerHTML=`<h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} <span class="elapsed">${elapsed}</span></h4><div>${html}</div>`;
   area.appendChild(card);
   card.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
+
+  // 渲染学情雷达图
+  if(name==='diagnosis')renderRadar(data);
 
 // === 测验渲染 ===
 function renderQuiz(data){
@@ -491,7 +535,7 @@ function gradeQuiz(){
       if(j===correctIdx)o.classList.add('correct');
       if(j===userAns&&j!==correctIdx)o.classList.add('wrong');
     });
-    if(userIdx===correctIdx)correct++;
+    if(userAns===correctIdx)correct++;
   });
   const score=Math.round(correct/qs.length*100);
   document.getElementById('quizResult').innerHTML=`<div class="quiz-result" style="color:${score>=60?'var(--success)':'var(--danger)'}">📊 得分：${score}/100 · 正确${correct}/${qs.length}</div>`;
@@ -508,9 +552,11 @@ async function runSingle(agentName){
       knowledge_gen:{diagnosis:agentResults.diagnosis||{}},
       reviewer:{content:(agentResults.knowledge_gen&&agentResults.knowledge_gen.content)||'',source_refs:[]},
       practice_guide:{topic:(agentResults.diagnosis&&agentResults.diagnosis.focus_topic)||'Python编程基础',level:getProfile().level},
-      quiz:{knowledge:agentResults.knowledge_gen||{},difficulty:getProfile().level}
+      quiz:{knowledge:agentResults.knowledge_gen||{},difficulty:getProfile().level},
+      iteration:{quiz_result:agentResults.quiz||{},diagnosis:agentResults.diagnosis||{},knowledge:agentResults.knowledge_gen||{}},
+      socratic:{knowledge:agentResults.knowledge_gen||{}}
     };
-    const paths={diagnosis:'/api/diagnosis',knowledge_gen:'/api/generate',reviewer:'/api/review',practice_guide:'/api/practice',quiz:'/api/quiz'};
+    const paths={diagnosis:'/api/diagnosis',knowledge_gen:'/api/generate',reviewer:'/api/review',practice_guide:'/api/practice',quiz:'/api/quiz',iteration:'/api/feedback',socratic:'/api/socratic/embed'};
     const res=await fetch(paths[agentName],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodies[agentName])});
     const data=await res.json();
     agentResults[agentName]=data;
@@ -532,11 +578,135 @@ function md2html(md){
   return md.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
 }
 
+// === 学情雷达图 ===
+function renderRadar(data){
+  const dims=['编程基础','算法思维','数学基础','项目经验','理论理解','自学能力'];
+  const strengths=data.strengths||[];
+  const blind=data.blind_spots||[];
+  // 估算各维度分数（基于关键词匹配 + 基础分）
+  const scores=dims.map(d=>{
+    let base=40;
+    if(strengths.some(s=>s.includes(d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力',''))))base+=30;
+    if(blind.some(s=>s.includes(d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力',''))))base-=20;
+    return Math.min(100,Math.max(5,base+Math.random()*15-7));
+  });
+  
+  const canvas=document.createElement('canvas');
+  canvas.width=280;canvas.height=280;
+  const card=document.getElementById('card-diagnosis');
+  if(!card)return;
+  card.querySelector('div').appendChild(canvas);
+  
+  const ctx=canvas.getContext('2d');
+  const cx=140,cy=140,r=100;
+  const n=dims.length;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=280*dpr;canvas.height=280*dpr;
+  canvas.style.width='280px';canvas.style.height='280px';
+  ctx.scale(dpr,dpr);
+  
+  // 画背景网格
+  for(let ring=1;ring<=4;ring++){
+    ctx.beginPath();
+    const rr=r*ring/4;
+    for(let i=0;i<=n;i++){
+      const a=Math.PI*2*i/n-Math.PI/2;
+      ctx[i?'lineTo':'moveTo'](cx+rr*Math.cos(a),cy+rr*Math.sin(a));
+    }
+    ctx.strokeStyle='rgba(30,42,66,0.8)';ctx.stroke();
+  }
+  // 画轴线
+  for(let i=0;i<n;i++){
+    const a=Math.PI*2*i/n-Math.PI/2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
+    ctx.strokeStyle='rgba(30,42,66,0.5)';ctx.stroke();
+  }
+  // 画数据区域
+  ctx.beginPath();
+  scores.forEach((s,i)=>{
+    const a=Math.PI*2*i/n-Math.PI/2;
+    const rr=r*s/100;
+    ctx[i?'lineTo':'moveTo'](cx+rr*Math.cos(a),cy+rr*Math.sin(a));
+  });
+  ctx.closePath();
+  ctx.fillStyle='rgba(0,212,170,0.15)';ctx.fill();
+  ctx.strokeStyle='rgba(0,212,170,0.8)';ctx.lineWidth=2;ctx.stroke();
+  // 画数据点
+  scores.forEach((s,i)=>{
+    const a=Math.PI*2*i/n-Math.PI/2;
+    const rr=r*s/100;
+    ctx.beginPath();ctx.arc(cx+rr*Math.cos(a),cy+rr*Math.sin(a),3,0,Math.PI*2);
+    ctx.fillStyle='#00d4aa';ctx.fill();
+  });
+  // 标签
+  ctx.fillStyle='#8892a8';ctx.font='10px sans-serif';ctx.textAlign='center';
+  dims.forEach((d,i)=>{
+    const a=Math.PI*2*i/n-Math.PI/2;
+    ctx.fillText(d,cx+(r+18)*Math.cos(a),cy+(r+18)*Math.sin(a)+3);
+  });
+}
+
+// === 启发式导学对话 ===
+let socraticHistory=[];
+async function startSocraticChat(sectionIdx){
+  const chatDiv=document.getElementById('socratic-chat-'+sectionIdx);
+  if(!chatDiv)return;
+  chatDiv.style.display='block';
+  chatDiv.innerHTML=`
+    <div style="max-height:180px;overflow-y:auto;margin-bottom:6px" id="socratic-msgs-${sectionIdx}"></div>
+    <div style="display:flex;gap:4px">
+      <input id="socratic-input-${sectionIdx}" style="flex:1;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;outline:none" placeholder="输入你的思考..." onkeydown="if(event.key==='Enter')sendSocraticMsg(${sectionIdx})">
+      <button class="btn" style="background:var(--accent2);color:#fff;font-size:10px;padding:4px 10px" onclick="sendSocraticMsg(${sectionIdx})">发送</button>
+    </div>`;
+  socraticHistory=[];
+}
+
+async function sendSocraticMsg(sectionIdx){
+  const input=document.getElementById('socratic-input-'+sectionIdx);
+  const msgs=document.getElementById('socratic-msgs-'+sectionIdx);
+  if(!input||!msgs)return;
+  const text=input.value.trim();
+  if(!text)return;
+  input.value='';
+  
+  // 显示用户消息
+  socraticHistory.push({role:'learner',text});
+  msgs.innerHTML+=`<div style="margin:3px 0;text-align:right"><span style="display:inline-block;padding:4px 8px;background:rgba(108,92,231,.15);border-radius:6px;font-size:11px">${esc(text)}</span></div>`;
+  
+  // 显示加载指示器
+  const loadingId='loading-'+Date.now();
+  msgs.innerHTML+=`<div id="${loadingId}" style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(0,212,170,.1);border-radius:6px;font-size:11px;color:var(--muted)">思考中...</span></div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  
+  try{
+    const knowledge=agentResults.knowledge_gen||{};
+    const res=await fetch('/api/socratic/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({knowledge,conversation_history:socraticHistory})});
+    const data=await res.json();
+    const ld=document.getElementById(loadingId);
+    if(ld)ld.remove();
+    
+    const response=data.response||data.summary||'请继续思考...';
+    socraticHistory.push({role:'tutor',text:response});
+    msgs.innerHTML+=`<div style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(0,212,170,.08);border-radius:6px;font-size:11px;color:var(--accent)">\u{1F3AF} ${esc(response)}</span></div>`;
+    
+    if(data.next_question){
+      msgs.innerHTML+=`<div style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(108,92,231,.1);border-radius:6px;font-size:11px;color:var(--accent2)">\u{1F4AD} ${esc(data.next_question)}</span></div>`;
+    }
+    if(data.encouragement){
+      msgs.innerHTML+=`<div style="margin:2px 0;font-size:10px;color:var(--success)">\u{1F44D} ${esc(data.encouragement)}</div>`;
+    }
+  }catch(e){
+    const ld=document.getElementById(loadingId);
+    if(ld)ld.innerHTML=`<span style="color:var(--danger)">对话失败: ${esc(e.message)}</span>`;
+  }
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
 // 初始化
 fetch('/api/health').then(r=>r.json()).then(d=>{
-  log(`后端: ✅ ${d.status} · ${d.agents?d.agents.length:0}个Agent就绪`,'success');
+  log(`后端: \u2705 ${d.status} \u00b7 ${d.agents?d.agents.length:0}个Agent就绪`,'success');
 }).catch(()=>{
-  log('⚠️ 后端未连接，请启动: uvicorn app:app','warn');
+  log('\u26A0\uFE0F 后端未连接，请启动: uvicorn app:app','warn');
 });
 </script>
 </body>
