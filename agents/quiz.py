@@ -33,7 +33,7 @@ class QuizAgent(BaseAgent):
             "difficulty": "easy/medium/hard",
             "question": "题目内容",
             "options": ["A选项", "B选项", "C选项", "D选项"],
-            "correct": "A",
+            "correct": 0,
             "explanation": "答案解析",
             "knowledge_point": "考察的知识点"
         }
@@ -41,7 +41,9 @@ class QuizAgent(BaseAgent):
     "total_score": 100,
     "passing_score": 60,
     "summary": "50字测试总结"
-}"""
+}
+
+重要：correct字段必须是0-3的数字索引，表示正确答案在options中的位置。选择题必须有4个options。"""
         
         concepts_str = "、".join(concepts) if concepts else "编程基础知识"
         user_prompt = f"""请基于以下学习内容生成分阶测试题：
@@ -65,6 +67,22 @@ class QuizAgent(BaseAgent):
         except (json.JSONDecodeError, Exception) as e:
             result = self._fallback_quiz(title, difficulty, str(e))
         
+        # 标准化correct字段为数字索引
+        for q in result.get("questions", []):
+            c = q.get("correct")
+            if isinstance(c, str):
+                # "A"->0, "B"->1, "C"->2, "D"->3
+                if c.upper() in "ABCD":
+                    q["correct"] = "ABCD".index(c.upper())
+                elif c.isdigit() and 0 <= int(c) <= 3:
+                    q["correct"] = int(c)
+                else:
+                    q["correct"] = 0
+            elif isinstance(c, int):
+                q["correct"] = max(0, min(3, c))
+            else:
+                q["correct"] = 0
+        
         result["agent"] = self.name
         return result
     
@@ -73,11 +91,11 @@ class QuizAgent(BaseAgent):
             "quiz_title": f"{title}测试题（{difficulty}级）",
             "difficulty": difficulty,
             "questions": [
-                {"id": 1, "type": "choice", "difficulty": "easy", "question": "Python中用什么关键字定义函数？", "options": ["function", "def", "func", "define"], "correct": "B", "explanation": "Python使用def关键字定义函数", "knowledge_point": "函数定义"},
-                {"id": 2, "type": "choice", "difficulty": "easy", "question": "以下哪个是Python的列表？", "options": ["(1,2,3)", "[1,2,3]", "{1,2,3}", "<1,2,3>"], "correct": "B", "explanation": "Python列表使用方括号[]", "knowledge_point": "数据类型"},
-                {"id": 3, "type": "short_answer", "difficulty": "medium", "question": "请解释什么是变量作用域", "options": [], "correct": "变量作用域指变量可被访问的代码范围", "explanation": "包括局部变量和全局变量", "knowledge_point": "作用域"},
-                {"id": 4, "type": "choice", "difficulty": "medium", "question": "Python中__init__方法的作用是？", "options": ["销毁对象", "初始化对象", "继承父类", "重载运算符"], "correct": "B", "explanation": "__init__是构造方法，用于初始化对象", "knowledge_point": "面向对象"},
-                {"id": 5, "type": "coding", "difficulty": "hard", "question": "写一个函数，接收列表，返回其中所有偶数的平方", "options": [], "correct": "[x**2 for x in lst if x%2==0]", "explanation": "使用列表推导式筛选偶数并求平方", "knowledge_point": "列表推导式+条件筛选"},
+                {"id": 1, "type": "choice", "difficulty": "easy", "question": "Python中用什么关键字定义函数？", "options": ["function", "def", "func", "define"], "correct": 1, "explanation": "Python使用def关键字定义函数", "knowledge_point": "函数定义"},
+                {"id": 2, "type": "choice", "difficulty": "easy", "question": "以下哪个是Python的列表？", "options": ["(1,2,3)", "[1,2,3]", "{1,2,3}", "<1,2,3>"], "correct": 1, "explanation": "Python列表使用方括号[]", "knowledge_point": "数据类型"},
+                {"id": 3, "type": "short_answer", "difficulty": "medium", "question": "请解释什么是变量作用域", "options": [], "correct": 0, "explanation": "包括局部变量和全局变量", "knowledge_point": "作用域"},
+                {"id": 4, "type": "choice", "difficulty": "medium", "question": "Python中__init__方法的作用是？", "options": ["销毁对象", "初始化对象", "继承父类", "重载运算符"], "correct": 1, "explanation": "__init__是构造方法，用于初始化对象", "knowledge_point": "面向对象"},
+                {"id": 5, "type": "coding", "difficulty": "hard", "question": "写一个函数，接收列表，返回其中所有偶数的平方", "options": [], "correct": 0, "explanation": "使用列表推导式筛选偶数并求平方", "knowledge_point": "列表推导式+条件筛选"},
             ],
             "total_score": 100,
             "passing_score": 60,
