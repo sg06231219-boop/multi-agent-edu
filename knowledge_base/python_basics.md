@@ -120,6 +120,33 @@ sorted_items = sorted(items, key=lambda x: x[1])
 # 注意：lambda不应过度使用，复杂逻辑请用def
 ```
 
+## 模块与包 [官方-Python文档]
+
+模块(module)是Python代码组织的基本单元，每个.py文件就是一个模块。
+
+```python
+# 自定义模块 mymodule.py
+def greet(name):
+    return f"Hello, {name}!"
+
+# 使用模块
+import mymodule
+mymodule.greet("World")
+
+# 常用标准库模块
+import os          # 操作系统接口
+import json        # JSON处理
+import datetime    # 日期时间
+import re          # 正则表达式
+import collections # 高级数据结构
+
+# 包(package)：包含__init__.py的目录
+# mypackage/
+#   __init__.py
+#   module_a.py
+#   module_b.py
+```
+
 ### 装饰器 [教材-《流畅的Python》]
 ```python
 import functools
