@@ -78,17 +78,46 @@ class KnowledgeGenAgent(BaseAgent):
         return result
     
     def _load_knowledge(self, topic: str) -> str:
-        """从知识库加载相关内容"""
-        # 简单关键词匹配
+        """从知识库加载相关内容，关键词+内容双匹配"""
+        results = []
+        topic_lower = topic.lower()
+        topic_keywords = set(topic_lower.replace('_', ' ').replace('-', ' ').split())
         try:
-            for fname in os.listdir(self.kb_path):
-                if fname.endswith(".md") and any(kw in fname.lower() for kw in topic.lower().split()):
-                    with open(os.path.join(self.kb_path, fname), "r", encoding="utf-8") as f:
-                        return f.read()
+            files = sorted(f for f in os.listdir(self.kb_path) if f.endswith(".md"))
         except Exception:
-            pass
-        # 没找到则返回默认
-        return "AI/编程领域基础知识：Python语法、数据类型、控制流、函数、面向对象编程、常用库等。"
+            return ""
+        
+        for fname in files:
+            fpath = os.path.join(self.kb_path, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except Exception:
+                continue
+            # 文件名匹配
+            fname_base = fname.replace('.md', '').replace('_', ' ').lower()
+            name_match = any(kw in fname_base for kw in topic_keywords)
+            # 内容匹配
+            content_lower = content[:3000].lower()
+            content_match = sum(1 for kw in topic_keywords if kw in content_lower)
+            
+            if name_match or content_match >= 1:
+                results.append((name_match * 10 + content_match, content))
+        
+        if results:
+            results.sort(key=lambda x: -x[0])
+            return results[0][1][:3000]  # 最相关的，截取前3000字
+        
+        # 没找到则返回所有知识库摘要
+        all_summaries = []
+        for fname in files[:3]:
+            fpath = os.path.join(self.kb_path, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    all_summaries.append(f"[{fname}]\n" + f.read()[:500])
+            except Exception:
+                continue
+        return "\n---\n".join(all_summaries) if all_summaries else ""
     
     def _fallback_knowledge(self, topic: str, level: str, error: str) -> dict:
         """兜底生成"""
