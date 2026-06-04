@@ -477,6 +477,207 @@ async def ws_pipeline(websocket: WebSocket):
         except:
             pass
 
+# ============================================================
+# 学情可视化报告 API（评分标准要求：知识盲区定位/资源难度匹配曲线/学习路径规划图）
+# ============================================================
+@app.post("/api/report")
+async def generate_report(body: StartRequest, request: Request):
+    """生成完整的学情可视化报告"""
+    _check_rate(request)
+    profile = body.profile.model_dump()
+    
+    try:
+        # Step 1: 学情诊断
+        diagnosis = await orchestrator.run_agent("diagnosis", profile=profile)
+        
+        # Step 2: 知识生成
+        knowledge = await orchestrator.run_agent("knowledge_gen", diagnosis=diagnosis)
+        
+        # Step 3: 审核
+        review = await orchestrator.run_agent("reviewer", 
+            content=knowledge.get("content", ""), 
+            source_refs=knowledge.get("source_refs", []),
+            debate_round=1)
+        
+        # Step 4: 测验
+        quiz = await orchestrator.run_agent("quiz", 
+            knowledge=knowledge, 
+            difficulty=profile.get("level", "medium"))
+        
+        # Step 5: 迭代决策
+        iteration = await orchestrator.run_agent("iteration", 
+            quiz_result=quiz, diagnosis=diagnosis, knowledge=knowledge)
+        
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    # 构建可视化报告数据
+    report = _build_visual_report(profile, diagnosis, knowledge, review, quiz, iteration)
+    return report
+
+
+def _build_visual_report(profile: dict, diagnosis: dict, knowledge: dict, 
+                          review: dict, quiz: dict, iteration: dict) -> dict:
+    """构建学情可视化报告"""
+    
+    # 1. 知识盲区定位（雷达图数据）
+    blind_spots = diagnosis.get("blind_spots", [])
+    strengths = diagnosis.get("strengths", [])
+    focus_topic = diagnosis.get("focus_topic", "Python编程基础")
+    learner_level = diagnosis.get("learner_level", profile.get("level", "beginner"))
+    
+    # 从知识内容提取知识点维度
+    knowledge_dimensions = [
+        {"name": "基础概念", "score": _calc_dimension_score("基础", diagnosis, 0.7)},
+        {"name": "核心原理", "score": _calc_dimension_score("原理", diagnosis, 0.5)},
+        {"name": "实操技能", "score": _calc_dimension_score("实操|实践", diagnosis, 0.4)},
+        {"name": "进阶应用", "score": _calc_dimension_score("进阶|高级", diagnosis, 0.3)},
+        {"name": "综合理解", "score": _calc_dimension_score("综合|理解", diagnosis, 0.45)},
+        {"name": "知识溯源", "score": _calc_dimension_score("溯源|来源", diagnosis, 0.6)},
+    ]
+    
+    # 2. 资源难度匹配曲线
+    level_map = {"beginner": 1, "intermediate": 2, "advanced": 3}
+    learner_score = level_map.get(learner_level, 1)
+    
+    # 模拟不同知识点的难度梯度
+    difficulty_curve = []
+    topics = ["基础语法", "数据结构", "算法思维", "框架应用", "系统设计", "前沿技术"]
+    for i, topic in enumerate(topics):
+        topic_difficulty = 1 + i * 0.4  # 难度递增
+        match_score = max(0, 1 - abs(learner_score - topic_difficulty) / 3) * 100
+        difficulty_curve.append({
+            "topic": topic,
+            "difficulty": round(topic_difficulty, 1),
+            "match_score": round(match_score, 1),
+            "recommendation": "重点学习" if match_score > 70 else "适当了解" if match_score > 40 else "暂不需要"
+        })
+    
+    # 3. 学习路径规划图
+    path_stages = []
+    decision = iteration.get("decision", "consolidate")
+    
+    if decision == "simplify":
+        path_stages = [
+            {"stage": 1, "title": "基础夯实", "status": "current", "desc": f"当前阶段：从{focus_topic}的基础概念开始"},
+            {"stage": 2, "title": "核心掌握", "status": "next", "desc": "掌握核心原理和基本操作"},
+            {"stage": 3, "title": "进阶提升", "status": "future", "desc": "学习进阶内容和实战项目"},
+        ]
+    elif decision == "advance":
+        path_stages = [
+            {"stage": 1, "title": "基础夯实", "status": "done", "desc": "已掌握基础知识"},
+            {"stage": 2, "title": "核心掌握", "status": "done", "desc": "已掌握核心原理"},
+            {"stage": 3, "title": "进阶提升", "status": "current", "desc": f"当前阶段：深入学习{focus_topic}的高级特性"},
+            {"stage": 4, "title": "专家突破", "status": "next", "desc": "探索前沿技术和创新应用"},
+        ]
+    else:
+        path_stages = [
+            {"stage": 1, "title": "基础夯实", "status": "done", "desc": "已掌握基础知识"},
+            {"stage": 2, "title": "核心掌握", "status": "current", "desc": f"当前阶段：巩固{focus_topic}的核心技能"},
+            {"stage": 3, "title": "进阶提升", "status": "next", "desc": "学习进阶内容和实战项目"},
+        ]
+    
+    # 4. 幻觉防控报告
+    hallucination_score = review.get("hallucination_score", 50)
+    
+    return {
+        "report_version": "1.0",
+        "learner_profile": profile,
+        "summary": {
+            "learner_level": learner_level,
+            "focus_topic": focus_topic,
+            "blind_spots_count": len(blind_spots),
+            "strengths_count": len(strengths),
+            "hallucination_score": hallucination_score,
+            "iteration_decision": decision,
+            "quiz_questions_count": len(quiz.get("questions", [])),
+        },
+        "radar_chart": {
+            "title": "知识能力雷达图",
+            "dimensions": knowledge_dimensions,
+            "blind_spots": blind_spots[:5],
+            "strengths": strengths[:5],
+        },
+        "difficulty_curve": {
+            "title": "资源难度匹配曲线",
+            "learner_level_score": learner_score,
+            "data_points": difficulty_curve,
+            "overall_match": round(sum(d["match_score"] for d in difficulty_curve) / len(difficulty_curve), 1),
+        },
+        "learning_path": {
+            "title": "学习路径规划图",
+            "stages": path_stages,
+            "current_stage": next((s for s in path_stages if s["status"] == "current"), path_stages[0]),
+            "total_stages": len(path_stages),
+        },
+        "hallucination_report": {
+            "score": hallucination_score,
+            "level": "低风险" if hallucination_score < 20 else "中等" if hallucination_score < 50 else "高风险",
+            "debate_rounds": review.get("debate_rounds", 1),
+            "issues_count": len(review.get("issues", [])),
+            "verdict": review.get("verdict", "unknown"),
+        },
+        "source_traceability": {
+            "knowledge_sources": knowledge.get("source_refs", []),
+            "review_notes": review.get("summary", ""),
+        },
+    }
+
+
+def _calc_dimension_score(keyword: str, diagnosis: dict, default: float) -> float:
+    """根据诊断结果计算某维度的得分(0-1)"""
+    import re
+    level = diagnosis.get("learner_level", "beginner")
+    level_scores = {"beginner": 0.3, "intermediate": 0.6, "advanced": 0.85}
+    base = level_scores.get(level, 0.3)
+    
+    # 检查该关键词是否在强项中
+    strengths_text = " ".join(diagnosis.get("strengths", []))
+    blind_text = " ".join(diagnosis.get("blind_spots", []))
+    
+    if re.search(keyword, strengths_text):
+        base = min(1.0, base + 0.2)
+    if re.search(keyword, blind_text):
+        base = max(0.1, base - 0.2)
+    
+    return round(base, 2)
+
+
+# ============================================================
+# 测试数据下载 API（提交要求：完整的输入输出示例）
+# ============================================================
+@app.get("/api/test-data")
+async def get_test_data():
+    """返回3组差异化学习者的完整输入输出示例"""
+    test_data_path = os.path.join(os.path.dirname(__file__), "data", "test_profiles.json")
+    if os.path.exists(test_data_path):
+        with open(test_data_path, "r", encoding="utf-8") as f:
+            profiles = json.load(f)
+    else:
+        profiles = []
+    
+    # 加载测试结果
+    test_result_path = os.path.join(os.path.dirname(__file__), "data", "test_result.json")
+    if os.path.exists(test_result_path):
+        with open(test_result_path, "r", encoding="utf-8") as f:
+            results = json.load(f)
+    else:
+        results = []
+    
+    return {
+        "description": "XH-202630赛题测试数据：3组差异化学习者输入输出示例",
+        "profiles": profiles[:3],  # 至少3组
+        "sample_results": results[:3],
+        "knowledge_base_files": [
+            {"name": f, "path": f"knowledge_base/{f}"}
+            for f in os.listdir(os.path.join(os.path.dirname(__file__), "knowledge_base"))
+            if f.endswith(".md")
+        ]
+    }
+
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
