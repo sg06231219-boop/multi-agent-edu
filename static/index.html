@@ -125,6 +125,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .progress-ring svg{transform:rotate(-90deg)}
 .progress-ring .ring-bg{stroke:var(--border);fill:none}
 .progress-ring .ring-fill{fill:none;stroke:var(--accent);transition:stroke-dashoffset .5s ease}
+
+/* 学情可视化报告 */
+.report-section{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px;margin-top:8px}
+.report-section h4{font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.report-grid .report-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px}
+.report-grid .report-item h5{font-size:11px;color:var(--accent);margin-bottom:6px}
+.path-stage{display:flex;align-items:center;gap:6px;margin:4px 0;padding:4px 8px;border-radius:5px;font-size:11px}
+.path-stage.done{background:rgba(0,212,170,.08);color:var(--success)}
+.path-stage.current{background:rgba(0,212,170,.15);color:var(--accent);font-weight:700;border:1px solid var(--accent)}
+.path-stage.next{background:var(--bg);color:var(--muted)}
+.path-stage.future{background:var(--bg);color:var(--muted);opacity:.6}
+.path-connector{color:var(--border);font-size:14px;margin:0 2px}
+
+/* Iteration action buttons */
+.iter-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.iter-actions .btn{font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);transition:all .2s}
+.iter-actions .btn:hover{border-color:var(--accent);background:rgba(0,212,170,.06)}
+.iter-actions .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+.iter-actions .btn.warn{background:var(--warn);color:#000;border-color:var(--warn)}
+
+/* Difficulty curve */
+.curve-bar{display:flex;align-items:flex-end;gap:6px;height:80px;margin-top:6px}
+.curve-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:2px}
+.curve-fill{width:100%;border-radius:3px 3px 0 0;transition:height .6s ease;min-height:4px}
+.curve-label{font-size:9px;color:var(--muted);text-align:center;word-break:break-all}
+.curve-val{font-size:9px;font-weight:700;color:var(--accent)}
+
+/* Socratic chat bubble */
+.socratic-bubble{max-width:85%;padding:6px 10px;border-radius:8px;font-size:11px;margin:3px 0;word-break:break-word}
+.socratic-bubble.user{background:rgba(108,92,231,.15);color:var(--text);margin-left:auto;text-align:right;border-bottom-right-radius:2px}
+.socratic-bubble.tutor{background:rgba(0,212,170,.08);color:var(--text);border-bottom-left-radius:2px}
+.socratic-bubble.system{background:var(--bg);color:var(--muted);font-size:10px;text-align:center}
+
+@media(max-width:768px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:40vh;overflow-y:auto}
+  .report-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -207,6 +246,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <span class="pipe-step" data-s="7">⑦ 导学</span>
   </div>
 
+
+  <button class="btn" style="margin-top:6px;background:var(--accent2);color:#fff;font-size:11px;padding:6px 14px;border-radius:7px;width:100%" id="btnReport" onclick="generateReport()">📊 生成学情可视化报告</button>
   <div class="log-panel" id="logPanel">
     <div class="log-line"><span class="log-time">系统</span><span class="log-msg info">就绪 · 填写学习者画像后点击启动</span></div>
   </div>
@@ -479,6 +520,11 @@ function renderCard(name,data){
         <p style="font-size:11px;margin-top:3px"><strong>教学方式：</strong>${esc(data.adjustments.new_approach||'-')}</p>
       </div>`:''}
       ${data.next_steps?data.next_steps.map(s=>`<div style="font-size:11px;margin:3px 0;padding:3px 8px;border-left:2px solid var(--accent)"><strong>Step ${esc(String(s.step))}:</strong> ${esc(s.action)} &rarr; ${esc(s.agent)} (${esc(s.description)})</div>`).join(''):''}
+      <div class="iter-actions">
+        <button class="btn primary" onclick="applyIteration('${dec}')">✅ 应用${decLabel}策略</button>
+        <button class="btn" onclick="reRunQuiz()">📝 重新测试</button>
+        <button class="btn warn" onclick="forceAdvance()">⏩ 强制进阶</button>
+      </div>
     `;
     document.getElementById('mIter').textContent=decLabel;
   } else if(name==='socratic'){
@@ -728,6 +774,168 @@ fetch('/api/health').then(r=>r.json()).then(d=>{
 }).catch(()=>{
   log('\u26A0\uFE0F 后端未连接，请启动: uvicorn app:app','warn');
 });
+
+// === 学情可视化报告 ===
+async function generateReport(){
+  log('📊 生成学情可视化报告...','info');
+  try{
+    const res=await fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:getProfile()})});
+    if(!res.ok){log('报告生成失败: '+res.status,'error');return;}
+    const data=await res.json();
+    renderVisualReport(data);
+    log('✅ 学情报告生成完成','success');
+  }catch(e){
+    log('报告生成异常: '+e.message,'error');
+  }
+}
+
+function renderVisualReport(data){
+  const area=document.getElementById('resultsArea');
+  // Remove old report
+  const old=document.getElementById('visual-report');
+  if(old)old.remove();
+  
+  const s=data.summary||{};
+  const radar=data.radar_chart||{};
+  const curve=data.difficulty_curve||{};
+  const path=data.learning_path||{};
+  const halluc=data.hallucination_report||{};
+  
+  let radarHTML='';
+  if(radar.dimensions&&radar.dimensions.length){
+    radarHTML='<div class="report-item"><h5>🕸️ 知识能力雷达</h5>';
+    radar.dimensions.forEach(d=>{
+      const pct=Math.round(d.score*100);
+      radarHTML+=`<div class="score-bar"><span class="label" style="min-width:55px">${d.name}</span><div class="bar"><div class="fill" style="width:${pct}%;background:${pct>=70?'var(--success)':pct>=40?'var(--warn)':'var(--danger)'}"></div></div><span class="score-val">${pct}%</span></div>`;
+    });
+    if(radar.blind_spots&&radar.blind_spots.length){
+      radarHTML+=`<p style="font-size:10px;color:var(--danger);margin-top:4px">⚠️ 盲区: ${esc(radar.blind_spots.join('、'))}</p>`;
+    }
+    if(radar.strengths&&radar.strengths.length){
+      radarHTML+=`<p style="font-size:10px;color:var(--success);margin-top:2px">✅ 强项: ${esc(radar.strengths.join('、'))}</p>`;
+    }
+    radarHTML+='</div>';
+  }
+  
+  // Difficulty curve
+  let curveHTML='';
+  if(curve.data_points&&curve.data_points.length){
+    curveHTML='<div class="report-item"><h5>📈 难度匹配曲线</h5><div class="curve-bar">';
+    curve.data_points.forEach(d=>{
+      const h=Math.max(4,d.match_score*0.75);
+      const c=d.match_score>=70?'var(--success)':d.match_score>=40?'var(--warn)':'var(--danger)';
+      curveHTML+=`<div class="curve-col"><div class="curve-fill" style="height:${h}px;background:${c}"></div><div class="curve-val">${Math.round(d.match_score)}</div><div class="curve-label">${d.topic}</div></div>`;
+    });
+    curveHTML+=`</div><p style="font-size:10px;color:var(--muted);margin-top:4px">综合匹配度: ${curve.overall_match||'-'}%</p></div>`;
+  }
+  
+  // Learning path
+  let pathHTML='';
+  if(path.stages&&path.stages.length){
+    pathHTML='<div class="report-item" style="grid-column:1/-1"><h5>🗺️ 学习路径规划</h5><div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">';
+    path.stages.forEach((st,i)=>{
+      if(i>0)pathHTML+='<span class="path-connector">→</span>';
+      const cls=st.status==='done'?'done':st.status==='current'?'current':st.status==='next'?'next':'future';
+      const icon=st.status==='done'?'✅':st.status==='current'?'📍':st.status==='next'?'🔜':'⏳';
+      pathHTML+=`<div class="path-stage ${cls}">${icon} ${esc(st.title)}</div>`;
+    });
+    pathHTML+='</div>';
+    path.stages.forEach(st=>{
+      if(st.status==='current'){
+        pathHTML+=`<div style="font-size:11px;margin-top:6px;padding:6px;background:rgba(0,212,170,.06);border-radius:5px;border-left:3px solid var(--accent)">📌 当前: ${esc(st.desc||'')}</div>`;
+      }
+    });
+    pathHTML+='</div>';
+  }
+  
+  // Hallucination report
+  let hallucHTML='';
+  if(halluc.score!==undefined){
+    const level=halluc.level||'未知';
+    const levelColor=halluc.score<20?'var(--success)':halluc.score<50?'var(--warn)':'var(--danger)';
+    hallucHTML=`<div class="report-item"><h5>🛡️ 幻觉防控报告</h5>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div><span style="font-size:22px;font-weight:800;color:${levelColor}">${halluc.score}</span><span style="font-size:10px;color:var(--muted)">/100</span></div>
+        <div><span style="font-size:11px">风险等级: <strong style="color:${levelColor}">${esc(level)}</strong></span><br><span style="font-size:10px;color:var(--muted)">辩论${halluc.debate_rounds||1}轮 · ${halluc.issues_count||0}个问题 · ${esc(halluc.verdict||'')}</span></div>
+      </div>
+    </div>`;
+  }
+  
+  const report=document.createElement('div');
+  report.className='report-section';
+  report.id='visual-report';
+  report.innerHTML=`
+    <h4>📊 学情可视化报告 · ${esc(s.learner_level||'-')} · ${esc(s.focus_topic||'-')}</h4>
+    <div class="report-grid">
+      ${radarHTML}
+      ${hallucHTML}
+      ${curveHTML}
+      ${pathHTML}
+    </div>
+  `;
+  area.insertBefore(report,area.firstChild);
+  report.scrollIntoView({behavior:'smooth'});
+}
+
+// === Iteration actions ===
+async function applyIteration(decision){
+  log('🔄 应用迭代策略: '+decision,'info');
+  try{
+    const quizResult=agentResults.quiz||{};
+    const diagnosis=agentResults.diagnosis||{};
+    const knowledge=agentResults.knowledge_gen||{};
+    const res=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_result:quizResult,diagnosis,knowledge})});
+    const data=await res.json();
+    if(data.new_content){
+      agentResults.knowledge_gen=data.new_content;
+      renderCard('knowledge_gen',data.new_content);
+      log('✅ 知识内容已根据迭代策略更新','success');
+    } else {
+      log('⚠️ 迭代策略已应用，但未生成新内容','warn');
+    }
+  }catch(e){
+    log('迭代应用失败: '+e.message,'error');
+  }
+}
+
+async function reRunQuiz(){
+  log('📝 重新测试...','info');
+  setNode('quiz','running');
+  try{
+    const knowledge=agentResults.knowledge_gen||{};
+    const res=await fetch('/api/quiz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({knowledge,difficulty:getProfile().level})});
+    const data=await res.json();
+    agentResults.quiz=data;
+    setNode('quiz','done');
+    renderCard('quiz',data);
+    log('✅ 重新测试完成','success');
+  }catch(e){
+    log('重新测试失败: '+e.message,'error');
+    setNode('quiz','error');
+  }
+}
+
+async function forceAdvance(){
+  log('⏩ 强制进阶...','info');
+  const profile=getProfile();
+  profile.level=profile.level==='beginner'?'intermediate':'advanced';
+  document.getElementById('inpLvl').value=profile.level;
+  log('📊 水平已调整为: '+profile.level,'info');
+  // Re-run diagnosis
+  setNode('diagnosis','running');
+  try{
+    const res=await fetch('/api/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile})});
+    const data=await res.json();
+    agentResults.diagnosis=data;
+    setNode('diagnosis','done');
+    renderCard('diagnosis',data);
+    log('✅ 诊断已更新，继续生成新内容','success');
+  }catch(e){
+    log('强制进阶失败: '+e.message,'error');
+    setNode('diagnosis','error');
+  }
+}
+
 </script>
 </body>
 </html>
