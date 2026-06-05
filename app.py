@@ -702,6 +702,79 @@ async def get_test_data():
     }
 
 
+# ============================================================
+# 知识库搜索 API（TF-IDF语义检索）
+# ============================================================
+@app.post("/api/knowledge/search")
+async def search_knowledge_api(request: Request):
+    """TF-IDF语义检索知识库"""
+    _check_rate(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="无效请求体")
+    query = body.get("query", "").strip()
+    top_k = min(body.get("top_k", 5), 20)
+    source_filter = body.get("source_filter", None)
+    if not query:
+        raise HTTPException(status_code=400, detail="查询内容不能为空")
+    try:
+        from knowledge_base.search import search_knowledge
+        results = search_knowledge(query, top_k=top_k, source_filter=source_filter)
+        return {"query": query, "results": results, "count": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+
+@app.get("/api/knowledge/stats")
+async def knowledge_stats():
+    """知识库索引统计"""
+    try:
+        from knowledge_base.search import get_search_engine
+        engine = get_search_engine()
+        return engine.get_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取统计失败: {str(e)}")
+
+# ============================================================
+# Agent结果解析 API（前端直调LLM后，后端解析结构化数据）
+# ============================================================
+@app.post("/api/agent/process")
+async def process_agent_output(request: Request):
+    """接收前端直调智谱API后的LLM原始输出，后端解析为结构化数据"""
+    _check_rate(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="无效请求体")
+    agent_name = body.get("agent_name", "").strip()
+    llm_output = body.get("llm_output", "").strip()
+    context = body.get("context", {})
+    if not agent_name or not llm_output:
+        raise HTTPException(status_code=400, detail="agent_name和llm_output不能为空")
+    if not orchestrator or agent_name not in orchestrator.agents:
+        raise HTTPException(status_code=400, detail=f"未知Agent: {agent_name}")
+    agent = orchestrator.agents[agent_name]
+    try:
+        parsed = agent._parse_llm_output(llm_output)
+        # Agent结果schema
+        schemas = {
+            "diagnosis": {"learner_level": {"type": str, "required": True, "default": "beginner"}, "level_score": {"type": (int, float), "required": False, "default": 50}, "strengths": {"type": list, "required": False, "default": []}, "blind_spots": {"type": list, "required": False, "default": []}, "focus_topic": {"type": str, "required": False, "default": ""}, "learning_path": {"type": list, "required": False, "default": []}},
+            "knowledge_gen": {"title": {"type": str, "required": False, "default": "个性化学习内容"}, "content": {"type": str, "required": False, "default": llm_output[:500]}, "concepts": {"type": list, "required": False, "default": []}, "source_refs": {"type": list, "required": False, "default": []}},
+            "reviewer": {"verdict": {"type": str, "required": False, "default": "pass"}, "hallucination_score": {"type": (int, float), "required": False, "default": 0}, "accuracy_score": {"type": (int, float), "required": False, "default": 80}, "issues": {"type": list, "required": False, "default": []}, "debate_rounds": {"type": int, "required": False, "default": 1}},
+            "practice_guide": {"steps": {"type": list, "required": False, "default": []}, "difficulty": {"type": str, "required": False, "default": "medium"}, "estimated_time": {"type": str, "required": False, "default": "2-4小时"}},
+            "quiz": {"questions": {"type": list, "required": False, "default": []}, "total_score": {"type": (int, float), "required": False, "default": 100}, "passing_score": {"type": (int, float), "required": False, "default": 60}},
+            "iteration": {"decision": {"type": str, "required": False, "default": "consolidate"}, "adjustments": {"type": dict, "required": False, "default": {}}, "suggestion": {"type": str, "required": False, "default": ""}},
+            "socratic": {"response": {"type": str, "required": False, "default": ""}, "questions": {"type": list, "required": False, "default": []}},
+        }
+        schema = schemas.get(agent_name, {})
+        is_valid, errors = agent._validate_result(parsed, schema)
+        parsed["_meta"] = {"agent": agent_name, "parsed": True, "valid": is_valid, "errors": errors, "source": "client_llm"}
+        return {"ok": True, "result": parsed, "valid": is_valid, "errors": errors}
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "raw_output": llm_output[:500]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 访客统计路由
