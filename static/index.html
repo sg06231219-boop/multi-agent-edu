@@ -211,7 +211,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 <div class="modal-overlay" id="apiKeyModal">
   <div class="modal-box">
     <h3>🔑 配置API密钥</h3>
-    <div class="hint" id="apiKeyHint">DeepSeek：在 platform.deepseek.com 获取API Key（sk-开头）<br>智谱：Key格式为 {id}.{secret}</div>
+    <div class="hint" id="apiKeyHint">智谱：Key格式 {id}.{secret}（open.bigmodel.cn获取）<br>DeepSeek：sk-开头（platform.deepseek.com获取）<br>没有Key？点击「跳过」进入Demo模式</div>
     <input type="password" id="apiKeyInput" placeholder="输入API Key（留空进入Demo模式）">
     <div class="btn-row">
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);flex:1" onclick="skipApiKey()">跳过（Demo）</button>
@@ -236,7 +236,7 @@ let abortController = null;
 let quizData = null;
 
 // 模型配置
-let currentModel = localStorage.getItem('selected_model') || 'deepseek';
+let currentModel = localStorage.getItem('selected_model') || 'zhipu';
 let currentApiKey = localStorage.getItem('api_key_'+currentModel) || '';
 
 // ============================================================
@@ -380,12 +380,29 @@ async function callDeepSeekStream(systemPrompt, userPrompt, onChunk){
 
 async function callDeepSeek(userPrompt, testMode){
   // 测试用，非流式
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','Authorization':'Bearer '+currentApiKey},
-    body: JSON.stringify({model:'deepseek-chat',messages:[{role:'user',content:userPrompt}],max_tokens:5})
-  });
-  return resp.ok;
+  try {
+    const resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+currentApiKey},
+      body: JSON.stringify({model:'deepseek-chat',messages:[{role:'user',content:userPrompt}],max_tokens:5})
+    });
+    return resp.ok;
+  } catch(e){ return false; }
+}
+
+async function callZhipu(userPrompt, testMode){
+  // 测试用，非流式
+  try {
+    const parts = currentApiKey.split('.');
+    if(parts.length < 2) return false;
+    const token = await generateJwt(parts[0], parts.slice(1).join('.'));
+    const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:userPrompt}],max_tokens:5})
+    });
+    return resp.ok;
+  } catch(e){ return false; }
 }
 
 // --- 智谱 GLM-4-Flash 实现（JWT签名） ---
@@ -1088,7 +1105,11 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('m
 // ============================================================
 document.getElementById('btnModel').textContent = '🤖 '+{deepseek:'DeepSeek-V3',zhipu:'GLM-4-Flash','openai-compat':'OpenAI兼容'}[currentModel];
 if(currentApiKey){ log('🔑 已加载'+currentModel+'的API Key','info'); }
-else { log('⚠️ 点击右上角「Key」配置API Key，或「模型」选择AI引擎','warn'); }
+else { 
+  log('⚠️ 点击右上角「Key」配置API Key，或「模型」选择AI引擎','warn');
+  // 首次打开自动弹出Key配置
+  setTimeout(()=>showApiKeyModal(), 800);
+}
 
 fetch('/api/health').then(r=>r.json()).then(d=>{
   const n = (d.agents||[]).length;
