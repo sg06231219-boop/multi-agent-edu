@@ -163,3 +163,45 @@ pipe = Pipeline([
     ('model', RandomForestClassifier())
 ])
 ```
+
+## 分类算法 [教材]
+
+分类是监督学习的核心任务，根据标注数据训练模型预测离散标签。
+
+常见分类算法：
+- **逻辑回归**：线性模型，输出概率，适合二分类基线
+- **决策树**：可解释性强，容易过拟合，用剪枝/随机森林缓解
+- **随机森林**：集成多棵决策树，Bagging策略降低方差
+- **SVM**：寻找最大间隔超平面，核技巧处理非线性
+- **KNN**：基于距离的惰性学习，需要特征标准化
+- **朴素贝叶斯**：基于贝叶斯定理+条件独立性假设，文本分类常用
+
+分类评估指标：准确率(Accuracy)、精确率(Precision)、召回率(Recall)、F1-score、AUC-ROC。
+
+```python
+from sklearn.metrics import classification_report, confusion_matrix
+y_pred = model.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+```
+
+## 聚类分析 [教材]
+
+聚类是无监督学习，将数据按相似度分组，无需标注标签。
+
+常见聚类算法：
+- **K-Means**：迭代优化簇中心，需预设K值，用肘部法则/轮廓系数选K
+- **DBSCAN**：基于密度，自动发现簇数，能识别噪声点
+- **层次聚类**：自底向上聚合或自顶向下分裂，生成树状图
+- **高斯混合模型(GMM)**：软聚类(概率归属)，用EM算法求解
+
+聚类评估：轮廓系数(-1到1，越大越好)、Calinski-Harabasz指数、Davies-Bouldin指数。
+
+```python
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.metrics import silhouette_score
+
+kmeans = KMeans(n_clusters=3, random_state=42)
+labels = kmeans.fit_predict(X_scaled)
+print('轮廓系数:', silhouette_score(X_scaled, labels))
+```
