@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多智能体协同学习平台</title>
+<meta name="description" content="多智能体协同学习平台：7个AI Agent协同决策，实现领域知识个性化生成、学情诊断、审核辩论、分阶测试、动态迭代、启发式导学。">
+<meta name="keywords" content="多智能体,个性化学习,知识生成,协同决策,AI教育,XH-202630">
+<meta property="og:title" content="多智能体协同学习平台">
+<meta property="og:description" content="7个AI Agent协同决策，领域知识个性化生成与多智能体协同决策系统">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e17;--card:#131a2b;--border:#1e2a42;--accent:#00d4aa;--accent2:#6c5ce7;--text:#e8edf5;--muted:#8892a8;--danger:#ff6b6b;--warn:#ffc107;--success:#00d4aa;--info:#3498db}
@@ -935,6 +941,17 @@ async function forceAdvance(){
     setNode('diagnosis','error');
   }
 }
+
+// === 访客统计埋点 ===
+;(function(){
+  function track(evt,extra){
+    const d={event:evt,page:{path:location.pathname,title:document.title,referrer:document.referrer},device:{type:/Mobi|Android|iPhone/i.test(navigator.userAgent)?'mobile':'desktop'}};
+    if(extra)Object.assign(d,extra);
+    if(navigator.sendBeacon){navigator.sendBeacon('/api/v1/analytics/track',new Blob([JSON.stringify(d)],{type:'application/json'}));}
+  }
+  track('pageview');
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')track('leave',{duration:Math.round(performance.now()/1000)});});
+})();
 
 </script>
 </body>
