@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<title>多智能体协同学习平台 v4.0</title>
+<meta name="description" content="多智能体协同学习平台：7个AI Agent协同工作，提供学情诊断、知识生成、审核辩论、实操指南、分阶测试、动态迭代、苏格拉底导学，实现个性化领域知识生成与多智能体协同决策。">
+<meta name="keywords" content="多智能体,协同学习,AI教育,学情诊断,知识生成,个性化学习,智能导学">
+<meta property="og:title" content="多智能体协同学习平台">
+<meta property="og:description" content="7个AI Agent协同工作，实现领域知识个性化生成与多智能体协同决策">
+<meta property="og:image" content="https://multi-agent-edu.onrender.com/static/og-image.png">
+<meta name="theme-color" content="#0a0e17">
+<title>多智能体协同学习平台 v4.1</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e17;--card:#131a2b;--border:#1e2a42;--accent:#00d4aa;--accent2:#6c5ce7;--text:#e8edf5;--muted:#8892a8;--danger:#ff6b6b;--warn:#ffc107;--success:#00d4aa}
@@ -77,6 +83,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .log-msg.success{color:var(--success)}.log-msg.warn{color:var(--warn)}.log-msg.error{color:var(--danger)}.log-msg.info{color:var(--accent)}
 @keyframes log-in{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
 
+/* 进度条 */
+.progress-wrap{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 14px;display:none}
+.progress-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease;width:0%}
+.progress-text{font-size:10px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+
+/* 操作按钮组 */
+.card-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.card-actions button{padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);font-size:10px;cursor:pointer;transition:all .2s}
+.card-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);color:var(--accent);padding:8px 20px;border-radius:8px;font-size:12px;z-index:9999;animation:toast-in .3s ease}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* 苏格拉底对话气泡 */
+.chat-bubble{max-width:85%;padding:10px 14px;border-radius:12px;font-size:12px;line-height:1.6;margin-bottom:8px;animation:card-in .3s ease}
+.chat-bubble.tutor{background:rgba(108,92,231,.15);border:1px solid rgba(108,92,231,.3);margin-right:auto}
+.chat-bubble.learner{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);margin-left:auto}
+.chat-input-row{display:flex;gap:6px;margin-top:8px}
+.chat-input-row input{flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px}
+.chat-input-row input:focus{border-color:var(--accent)}
+.chat-input-row button{padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+
 .result-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px;animation:card-in .4s ease;position:relative}
 @keyframes card-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .result-card h4{font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -107,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
     <div>
       <h1>🧠 多智能体协同学习平台</h1>
-      <div class="sub">XH-202630 · v4.0 多模型支持</div>
+      <div class="sub">XH-202630 · v4.1 智谱优化版</div>
     </div>
   </div>
   <div class="header-right">
@@ -175,6 +205,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <span class="pipe-step" data-s="7">⑦ 导学</span>
   </div>
 
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text"><span id="progressLabel">准备中...</span><span id="progressPct">0%</span></div>
+  </div>
+
   <div class="log-panel" id="logPanel">
     <div class="log-line"><span class="log-time">系统</span><span class="log-msg info">就绪 · v4.0 多模型支持 · 填写画像后点击启动</span></div>
   </div>
@@ -184,7 +219,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
       <div class="icon">🧠</div>
       <h3>多智能体协同学习系统 v4.0</h3>
       <p>支持 DeepSeek-V3 / 智谱GLM-4-Flash 多模型</p>
-      <p style="font-size:10px;margin-top:4px;color:var(--muted)">点击右上角「模型」选择AI引擎，点击「Key」配置API密钥</p>
+      <p style="font-size:10px;margin-top:4px;color:var(--muted)">点击右上角「Key」配置智谱API密钥 · Ctrl+Enter快速启动</p>
     </div>
   </div>
 </div>
@@ -811,6 +846,9 @@ async function startPipeline(){
   ['mHalluc','mAcc','mQuiz'].forEach(id=>{document.getElementById(id).textContent='-';});
   document.getElementById('mAgents').textContent='0/7';
 
+  // 显示进度条
+  const pw = document.getElementById('progressWrap'); pw.style.display='block';
+  updateProgress(0, '启动中...');
   log('🚀 7个Agent协同启动（'+currentModel+'）...','info');
   startTimer2();
 
@@ -829,6 +867,7 @@ async function startPipeline(){
     stopTimer2();
     document.getElementById('btnStart').disabled = false;
     document.getElementById('btnStop').style.display = 'none';
+    updateProgress(100, '完成');
   }
 }
 
@@ -847,6 +886,9 @@ async function runStep(name, stepNum, ctx){
   document.getElementById('mAgents').textContent = done+'/7';
 
   renderCard(name, data);
+  // 更新进度
+  const pct = Math.round(done / 7 * 100);
+  updateProgress(pct, `${AGENT_LABELS[name]}完成 · ${done}/7`);
   log(`✅ ${AGENT_LABELS[name]} 完成`,'success');
 
   if(name==='reviewer'){
@@ -1022,8 +1064,13 @@ function renderCard(name, data){
   card.className = 'result-card';
   card.id = 'card-'+name;
   card.innerHTML = `
-    <h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} ${isDemo?'<span style="font-size:9px;background:var(--warn);color:#000;padding:2px 8px;border-radius:8px;margin-left:6px">DEMO</span>':''}</h4>
+    <h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} ${isDemo?'<span style="font-size:9px;background:var(--warn);color:#000;padding:2px 8px;border-radius:8px;margin-left:6px">DEMO</span>':''} <span style="font-size:10px;color:var(--muted);margin-left:auto">${data._meta?.model||''}</span></h4>
     <div>${body}</div>
+    <div class="card-actions">
+      <button onclick="copyResult('${name}')">📋 复制JSON</button>
+      ${name==='socratic'?'<button onclick="exportAllResults()">📦 导出全部</button>':''}
+    </div>
+    ${name==='socratic'?'<div id="socraticChat" style="margin-top:10px;max-height:300px;overflow-y:auto"></div><div class="chat-input-row"><input id="socraticInput" placeholder="输入你的回答，继续对话..." onkeydown="if(event.key===\'Enter\')sendSocraticChat()"><button onclick="sendSocraticChat()">发送</button></div>':''}
   `;
   const rg2 = document.getElementById('rg');
   if(rg2) rg2.appendChild(card);
@@ -1101,6 +1148,83 @@ function md2html(md){
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('mobile-show'); }
 
 // ============================================================
+// 进度条
+// ============================================================
+function updateProgress(pct, label){
+  const fill = document.getElementById('progressFill');
+  const lbl = document.getElementById('progressLabel');
+  const pc = document.getElementById('progressPct');
+  if(fill) fill.style.width = pct+'%';
+  if(lbl) lbl.textContent = label||'';
+  if(pc) pc.textContent = pct+'%';
+}
+
+// ============================================================
+// Toast提示
+// ============================================================
+function showToast(msg, dur=2000){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), dur);
+}
+
+// ============================================================
+// 结果复制 & 导出
+// ============================================================
+function copyResult(name){
+  const data = agentResults[name];
+  if(!data) return;
+  // 移除内部字段
+  const clean = {...data}; delete clean._demo; delete clean._meta;
+  navigator.clipboard.writeText(JSON.stringify(clean, null, 2)).then(()=>showToast('✅ 已复制到剪贴板')).catch(()=>showToast('复制失败'));
+}
+function exportAllResults(){
+  if(!Object.keys(agentResults).length){ showToast('暂无结果'); return; }
+  const clean = {};
+  for(const [k,v] of Object.entries(agentResults)){
+    clean[k] = {...v}; delete clean[k]._demo; delete clean[k]._meta;
+  }
+  const blob = new Blob([JSON.stringify(clean, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='multi-agent-results-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast('✅ 已导出JSON');
+}
+
+// ============================================================
+// 苏格拉底对话
+// ============================================================
+let socraticHistory = [];
+async function sendSocraticChat(){
+  const input = document.getElementById('socraticInput');
+  if(!input) return;
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = '';
+  socraticHistory.push({role:'learner', text:msg});
+  renderSocraticChat();
+  
+  // 调用LLM
+  const knowledge = agentResults.knowledge_gen || {};
+  const sysPrompt = `你是苏格拉底式导学导师。不要直接给答案，通过追问引导学习者思考。当前学习主题：${knowledge.title||'编程基础'}。知识要点：${(knowledge.concepts||[]).join('、')}。输出JSON：{"response":"回复","next_question":"下一个追问","assessment":"understood/partially_understood/misunderstood"}`;
+  try {
+    const fullText = await callLLM(sysPrompt, `对话历史：${JSON.stringify(socraticHistory.slice(-6))}\n学习者说：${msg}\n请回应（JSON）：`);
+    const parsed = parseLLMOutput(fullText);
+    socraticHistory.push({role:'tutor', text:parsed.response||parsed.reply||'你能更详细地解释一下吗？'});
+    renderSocraticChat();
+  } catch(e){
+    socraticHistory.push({role:'tutor', text:'继续思考——你能举个例子说明吗？'});
+    renderSocraticChat();
+  }
+}
+function renderSocraticChat(){
+  const chatEl = document.getElementById('socraticChat');
+  if(!chatEl) return;
+  chatEl.innerHTML = socraticHistory.map(m=>`<div class="chat-bubble ${m.role==='tutor'?'tutor':'learner'}">${esc(m.text)}</div>`).join('');
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+// ============================================================
 // 初始化
 // ============================================================
 document.getElementById('btnModel').textContent = '🤖 '+{deepseek:'DeepSeek-V3',zhipu:'GLM-4-Flash','openai-compat':'OpenAI兼容'}[currentModel];
@@ -1115,6 +1239,13 @@ fetch('/api/health').then(r=>r.json()).then(d=>{
   const n = (d.agents||[]).length;
   log(`后端就绪：${n}个Agent | 版本 ${d.version||'?'}`,'success');
 }).catch(()=>log('⚠️ 后端未连接（可使用前端直调模式）','warn'));
+
+// Ctrl+Enter 快捷启动
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.key==='Enter' && !document.getElementById('btnStart').disabled){
+    startPipeline();
+  }
+});
 </script>
 </body>
 </html>
