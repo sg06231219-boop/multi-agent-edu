@@ -124,7 +124,7 @@ class KnowledgeGenAgent(BaseAgent):
         return {
             "title": f"{topic} - {level}级学习内容",
             "content": f"## {topic}\n\n这是为{level}级学习者生成的关于{topic}的学习内容。\n\n### 核心概念\n{topic}的基本原理和关键要点。\n\n### 实操示例\n通过动手练习加深理解。\n\n### 扩展阅读\n更多深入资料。",
-            "source_refs": [{"id": "KB001", "title": "基础知识库", "relevance": "核心参考"}],
+            "source_refs": [{"id": "KB001", "title": "基础知识库", "source": "教材", "relevance": "核心参考"}],
             "concepts": [f"{topic}基本概念", f"{topic}核心原理"],
             "examples": [f"{topic}入门示例"],
             "extensions": [f"{topic}进阶资料"],
