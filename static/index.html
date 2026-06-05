@@ -2,14 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>多智能体协同学习平台</title>
-<meta name="description" content="多智能体协同学习平台：7个AI Agent协同决策，实现领域知识个性化生成、学情诊断、审核辩论、分阶测试、动态迭代、启发式导学。">
-<meta name="keywords" content="多智能体,个性化学习,知识生成,协同决策,AI教育,XH-202630">
-<meta property="og:title" content="多智能体协同学习平台">
-<meta property="og:description" content="7个AI Agent协同决策，领域知识个性化生成与多智能体协同决策系统">
-<meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e17;--card:#131a2b;--border:#1e2a42;--accent:#00d4aa;--accent2:#6c5ce7;--text:#e8edf5;--muted:#8892a8;--danger:#ff6b6b;--warn:#ffc107;--success:#00d4aa;--info:#3498db}
@@ -26,12 +20,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 /* 主布局 */
 .main{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 52px);gap:0}
 
+/* === 移动端适配 === */
+@media(max-width:768px){
+  .main{grid-template-columns:1fr;position:relative;}
+  .sidebar{display:none;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:200;background:var(--bg);padding:16px;overflow-y:auto;animation:slideIn .3s ease;}
+  .sidebar.mobile-show{display:flex!important;flex-direction:column;gap:12px;}
+  .content{padding:12px;gap:10px;}
+  .mobile-toggle{display:flex!important;}
+  .header h1{font-size:15px;}
+  .header .sub{font-size:9px;}
+  .btn{padding:11px 14px;font-size:13px;}
+  .agent-node{min-width:80px;padding:7px 8px;}
+  .agent-node .icon{font-size:16px;}
+  .agent-node .name{font-size:9px;}
+  .metrics-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;}
+  .metric-card{min-width:70px;padding:7px 5px;}
+  .metric-card .val{font-size:16px;}
+  .result-card{padding:10px;}
+  .log-panel{max-height:100px;}
+}
+@media(max-width:480px){
+  .header{padding:10px 12px;}
+  .main{gap:0;}
+  .content{padding:8px;gap:8px;}
+}
+@keyframes slideIn{from{transform:translateY(-20px);opacity:0;}to{transform:none;opacity:1;}}
+
+.mobile-toggle{display:none;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;}
+
 /* 左侧面板 */
 .sidebar{background:var(--card);border-right:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .panel-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .form-group{margin-bottom:10px}
 .form-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:600}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;outline:none;transition:border .2s}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;line:none;transition:border .2s}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
 .form-group textarea{resize:vertical;min-height:48px;font-family:inherit}
 
@@ -40,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .slider-group label span{color:var(--accent);font-weight:700}
 .slider-group input[type=range]{width:100%;accent-color:var(--accent)}
 
-.btn{padding:9px 16px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn{padding:9px 16px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;touch-action:manipulation}
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;width:100%}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(0,212,170,.3)}
 .btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none}
@@ -52,13 +74,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 /* 指标 */
 .metrics-row{display:flex;gap:8px;flex-wrap:wrap;display:none}
 .metric-card{flex:1;min-width:90px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center}
-.metric-card .val{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.metric-card .val{font-size:20px;font-weight:800;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .metric-card .lbl{font-size:9px;color:var(--muted);margin-top:1px}
 
 /* Agent拓扑 */
 .topo-canvas{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px}
 .node-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:4px 0}
-.agent-node{padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:var(--bg);text-align:center;min-width:95px;transition:all .5s}
+.agent-node{padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:var(--bg);text-align:center;min-width:95px;transition:all .5s;cursor:default}
 .agent-node.active{border-color:var(--accent);box-shadow:0 0 18px rgba(0,212,170,.2)}
 .agent-node.running{animation:node-pulse 1.2s infinite}
 .agent-node.done{border-color:var(--success);background:rgba(0,212,170,.06)}
@@ -107,7 +129,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .quiz-q{background:var(--bg);border-radius:7px;padding:10px;margin:6px 0;border:1px solid var(--border);transition:border .3s}
 .quiz-q .q-text{font-size:12px;margin-bottom:6px}
 .quiz-opts{display:flex;flex-direction:column;gap:4px}
-.quiz-opt{padding:6px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:11px;transition:all .2s;user-select:none}
+.quiz-opt{padding:6px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:11px;transition:all .2s;user-select:none;-webkit-tap-highlight-color:transparent}
 .quiz-opt:hover{border-color:var(--accent);background:rgba(0,212,170,.04)}
 .quiz-opt.selected{border-color:var(--accent);background:rgba(0,212,170,.08)}
 .quiz-opt.correct{border-color:var(--success)!important;background:rgba(0,212,170,.12)!important}
@@ -115,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .quiz-result{font-size:12px;font-weight:700;padding:7px 10px;border-radius:7px;margin-top:6px}
 
 /* 知识内容 */
-.knowledge-content{background:var(--bg);padding:12px;border-radius:7px;margin-top:6px;font-size:12px;line-height:1.65;max-height:320px;overflow-y:auto}
+.knowledge-content{background:var(--bg);padding:12px;border-radius:7px;margin-top:6px;font-size:12px;line-height:1.65;max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .knowledge-content h3,.knowledge-content h4{color:var(--accent);margin:8px 0 5px}
 .knowledge-content code{background:rgba(0,212,170,.1);padding:1px 4px;border-radius:3px;font-size:11px}
 .knowledge-content pre{background:#0d1117;padding:8px;border-radius:5px;overflow-x:auto;font-size:11px;margin:6px 0}
@@ -132,54 +154,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 .progress-ring .ring-bg{stroke:var(--border);fill:none}
 .progress-ring .ring-fill{fill:none;stroke:var(--accent);transition:stroke-dashoffset .5s ease}
 
-/* 学情可视化报告 */
-.report-section{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px;margin-top:8px}
-.report-section h4{font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.report-grid .report-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px}
-.report-grid .report-item h5{font-size:11px;color:var(--accent);margin-bottom:6px}
-.path-stage{display:flex;align-items:center;gap:6px;margin:4px 0;padding:4px 8px;border-radius:5px;font-size:11px}
-.path-stage.done{background:rgba(0,212,170,.08);color:var(--success)}
-.path-stage.current{background:rgba(0,212,170,.15);color:var(--accent);font-weight:700;border:1px solid var(--accent)}
-.path-stage.next{background:var(--bg);color:var(--muted)}
-.path-stage.future{background:var(--bg);color:var(--muted);opacity:.6}
-.path-connector{color:var(--border);font-size:14px;margin:0 2px}
-
-/* Iteration action buttons */
-.iter-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.iter-actions .btn{font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);transition:all .2s}
-.iter-actions .btn:hover{border-color:var(--accent);background:rgba(0,212,170,.06)}
-.iter-actions .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
-.iter-actions .btn.warn{background:var(--warn);color:#000;border-color:var(--warn)}
-
-/* Difficulty curve */
-.curve-bar{display:flex;align-items:flex-end;gap:6px;height:80px;margin-top:6px}
-.curve-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:2px}
-.curve-fill{width:100%;border-radius:3px 3px 0 0;transition:height .6s ease;min-height:4px}
-.curve-label{font-size:9px;color:var(--muted);text-align:center;word-break:break-all}
-.curve-val{font-size:9px;font-weight:700;color:var(--accent)}
-
-/* Socratic chat bubble */
-.socratic-bubble{max-width:85%;padding:6px 10px;border-radius:8px;font-size:11px;margin:3px 0;word-break:break-word}
-.socratic-bubble.user{background:rgba(108,92,231,.15);color:var(--text);margin-left:auto;text-align:right;border-bottom-right-radius:2px}
-.socratic-bubble.tutor{background:rgba(0,212,170,.08);color:var(--text);border-bottom-left-radius:2px}
-.socratic-bubble.system{background:var(--bg);color:var(--muted);font-size:10px;text-align:center}
-
-@media(max-width:768px){
-  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:40vh;overflow-y:auto}
-  .report-grid{grid-template-columns:1fr}
-}
+/* === API Key弹窗 === */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+.modal-overlay.show{display:flex}
+@keyframes fadeIn{from{opacity:0}}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:92%;max-width:420px;animation:modalIn .3s ease}
+@keyframes modalIn{from{transform:scale(.95) translateY(10px);opacity:0}}
+.modal-box h3{font-size:15px;margin-bottom:4px}
+.modal-box .hint{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.modal-box .hint a{color:var(--accent);text-decoration:none}
+.modal-box input[type=password]{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;margin-bottom:10px}
+.modal-box input[type=password]:focus{border-color:var(--accent);outline:none}
+.modal-box .btn-row{display:flex;gap:8px;margin-top:6px}
+.modal-box .btn-skip{background:transparent;border:1px solid var(--border);color:var(--muted);flex:1}
+.modal-box .btn-confirm{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;flex:1}
+.modal-box .error-msg{color:var(--danger);font-size:11px;margin-top:6px;display:none}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div>
-    <h1>🧠 多智能体协同学习平台</h1>
-    <div class="sub">XH-202630 · 领域知识个性化生成与多智能体协同决策系统</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+    <div>
+      <h1>🧠 多智能体协同学习平台</h1>
+      <div class="sub">XH-202630 · 领域知识个性化生成与多智能体协同决策系统</div>
+    </div>
   </div>
   <div class="header-right">
+    <button onclick="showApiKeyModal()" style="background:var(--card);border:1px solid var(--border);color:var(--accent);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" id="btnApiKey">🔑 API Key</button>
     <span class="badge-live" id="liveBadge">● LIVE</span>
     <span style="font-size:11px;color:var(--muted)" id="timerDisplay">00:00</span>
   </div>
@@ -187,12 +190,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
 
 <div class="main">
 <!-- 左侧 -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
   <div>
     <div class="panel-title">📋 学习者画像</div>
-    <div class="form-group"><label>背景描述</label><textarea id="inpBg">计算机科学大二学生，学过C语言和数据结构，想学AI开发</textarea></div>
+    <div class="form-group"><label>背景描述</label><textarea id="inpBg" placeholder="例如：计算机科学大二学生，学过C语言和数据结构，想学AI开发">计算机科学大二学生，学过C语言和数据结构，想学AI开发</textarea></div>
     <div class="form-group"><label>编程经验</label><select id="inpExp"><option value="无编程经验">无编程经验</option><option value="学过一门语言" selected>学过一门语言</option><option value="有项目经验">有项目经验</option><option value="熟练开发者">熟练开发者</option></select></div>
-    <div class="form-group"><label>学习目标</label><input id="inpGoal" value="掌握Python和AI开发基础"></div>
+    <div class="form-group"><label>学习目标</label><input id="inpGoal" value="掌握Python和AI开发基础" placeholder="你想学会什么？"></div>
     <div class="form-group"><label>自评水平</label><select id="inpLvl"><option value="beginner">零基础入门</option><option value="intermediate" selected>有一定基础</option><option value="advanced">进阶提升</option></select></div>
   </div>
 
@@ -210,11 +213,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <div style="display:flex;flex-direction:column;gap:4px">
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('diagnosis')">🔍 学情诊断</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('knowledge_gen')">📚 知识生成</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('reviewer')">⚖️ 内容审核</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('practice_guide')">🛠️ 实操指南</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('reviewer')">🔎 内容审核</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('practice_guide')">🔧 实操指南</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('quiz')">📝 分阶测试</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('iteration')">🔄 动态迭代</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('socratic')">💭 启发式导学</button>
     </div>
   </div>
 </div>
@@ -227,18 +228,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <div class="metric-card"><div class="val" id="mHalluc">-</div><div class="lbl">幻觉分数</div></div>
     <div class="metric-card"><div class="val" id="mAcc">-</div><div class="lbl">准确度</div></div>
     <div class="metric-card"><div class="val" id="mQuiz">-</div><div class="lbl">测验得分</div></div>
-    <div class="metric-card"><div class="val" id="mIter">-</div><div class="lbl">迭代策略</div></div>
   </div>
 
   <div class="topo-canvas">
-    <div class="node-grid">
+    <div class="node-grid" id="nodeGrid">
       <div class="agent-node" id="nd-diagnosis"><div class="icon">🔍</div><div class="name">学情诊断</div><div class="status">等待中</div></div>
       <div class="agent-node" id="nd-knowledge_gen"><div class="icon">📚</div><div class="name">知识生成</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-reviewer"><div class="icon">⚖️</div><div class="name">审核裁判</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-practice_guide"><div class="icon">🛠️</div><div class="name">实操指南</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-reviewer"><div class="icon">🔎</div><div class="name">审核裁判</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-practice_guide"><div class="icon">🔧</div><div class="name">实操指南</div><div class="status">等待中</div></div>
       <div class="agent-node" id="nd-quiz"><div class="icon">📝</div><div class="name">分阶测试</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-iteration"><div class="icon">🔄</div><div class="name">动态迭代</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-socratic"><div class="icon">💭</div><div class="name">启发式导学</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-iteration"><div class="icon">🔄</div><div class="name">迭代优化</div><div class="status">等待中</div></div>
+      <div class="agent-node" id="nd-socratic"><div class="icon">💬</div><div class="name">苏格拉底</div><div class="status">等待中</div></div>
     </div>
   </div>
 
@@ -252,8 +252,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
     <span class="pipe-step" data-s="7">⑦ 导学</span>
   </div>
 
-
-  <button class="btn" style="margin-top:6px;background:var(--accent2);color:#fff;font-size:11px;padding:6px 14px;border-radius:7px;width:100%" id="btnReport" onclick="generateReport()">📊 生成学情可视化报告</button>
   <div class="log-panel" id="logPanel">
     <div class="log-line"><span class="log-time">系统</span><span class="log-msg info">就绪 · 填写学习者画像后点击启动</span></div>
   </div>
@@ -263,696 +261,745 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
       <div class="icon">🧠</div>
       <h3>多智能体协同学习系统</h3>
       <p>填写左侧画像 → 调整参数 → 点击启动</p>
-      <p style="font-size:10px;margin-top:4px;color:var(--muted)">7个Agent协同：诊断→生成→审核辩论→实操→测试→迭代→导学</p>
+      <p style="font-size:10px;margin-top:4px;color:var(--muted)">7个Agent协同：诊断→生成→审核辩论→实操→测验→迭代→导学</p>
     </div>
   </div>
 </div>
 </div>
 
+<!-- API Key弹窗 -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal-box">
+    <h3>🔑 配置智谱API Key</h3>
+    <div class="hint">
+      系统将直接在前端调用智谱AI，绕过服务器超时限制。<br>
+      获取Key：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn</a><br>
+      Key格式：{id}.{secret}，我们将用JWT签名后调用API。
+    </div>
+    <input type="password" id="apiKeyInput" placeholder="输入你的智谱API Key（格式：id.secret）">
+    <div class="btn-row">
+      <button class="btn btn-skip" onclick="skipApiKey()">跳过（Demo模式）</button>
+      <button class="btn btn-confirm" onclick="confirmApiKey()">确认</button>
+    </div>
+    <div class="error-msg" id="apiKeyError"></div>
+  </div>
+</div>
+
 <script>
-const AGENTS=['diagnosis','knowledge_gen','reviewer','practice_guide','quiz','iteration','socratic'];
-const AGENT_LABELS={diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核裁判',practice_guide:'实操指南',quiz:'分阶测试',iteration:'动态迭代',socratic:'启发式导学'};
-const AGENT_ICONS={diagnosis:'🔍',knowledge_gen:'📚',reviewer:'⚖️',practice_guide:'🛠️',quiz:'📝',iteration:'🔄',socratic:'💭'};
+// ============================================================
+// 全局状态
+// ============================================================
+const AGENTS = ['diagnosis','knowledge_gen','reviewer','practice_guide','quiz','iteration','socratic'];
+const AGENT_LABELS = {diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核裁判',practice_guide:'实操指南',quiz:'分阶测试',iteration:'迭代优化',socratic:'苏格拉底'};
+const AGENT_ICONS = {diagnosis:'🔍',knowledge_gen:'📚',reviewer:'🔎',practice_guide:'🔧',quiz:'📝',iteration:'🔄',socratic:'💬'};
 
-let agentResults={};
-let timerInterval=null;
-let startTime=0;
-let abortController=null;  // 用于中断SSE fetch
-let quizData=null;
+let agentResults = {};
+let timerInterval = null;
+let startTime = 0;
+let abortController = null;   // 用于取消fetch
+let quizData = null;
+let currentApiKey = localStorage.getItem('zhipu_api_key') || '';
+let currentApiKeyId = '';
+let currentApiKeySecret = '';
 
-// === 日志 ===
-function log(msg,type='info'){
-  const p=document.getElementById('logPanel');
-  const d=new Date();
-  const ts=d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0');
-  const div=document.createElement('div');
-  div.className='log-line';
-  div.innerHTML=`<span class="log-time">${ts}</span><span class="log-msg ${type}">${msg}</span>`;
+// ============================================================
+// API Key 管理
+// ============================================================
+function showApiKeyModal(){
+  document.getElementById('apiKeyModal').classList.add('show');
+  document.getElementById('apiKeyInput').focus();
+  document.getElementById('apiKeyInput').value = currentApiKey ? '••••••••' : '';
+  document.getElementById('apiKeyError').style.display = 'none';
+}
+function closeApiKeyModal(){
+  document.getElementById('apiKeyModal').classList.remove('show');
+}
+function skipApiKey(){
+  currentApiKey = '';
+  currentApiKeyId = '';
+  currentApiKeySecret = '';
+  localStorage.removeItem('zhipu_api_key');
+  closeApiKeyModal();
+  log('⚠️ 进入Demo模式，将使用预置数据展示','warn');
+}
+async function confirmApiKey(){
+  const input = document.getElementById('apiKeyInput').value.trim();
+  const errEl = document.getElementById('apiKeyError');
+  if(!input || input === '••••••••'){
+    errEl.textContent = '请输入有效的API Key';
+    errEl.style.display = 'block';
+    return;
+  }
+  // 解析 Key：格式为 {id}.{secret}
+  const parts = input.split('.');
+  if(parts.length < 2){
+    errEl.textContent = 'Key格式错误，应为 {id}.{secret}';
+    errEl.style.display = 'block';
+    return;
+  }
+  currentApiKeyId = parts[0];
+  currentApiKeySecret = parts.slice(1).join('.');
+  currentApiKey = input;
+  localStorage.setItem('zhipu_api_key', input);
+  
+  // 测试Key有效性
+  log('🔑 验证API Key...','info');
+  try {
+    const ok = await testApiKey(currentApiKeyId, currentApiKeySecret);
+    if(ok){
+      log('✅ API Key验证成功！','success');
+      document.getElementById('btnApiKey').textContent = '🔑 ' + currentApiKeyId + '•••';
+      closeApiKeyModal();
+    } else {
+      errEl.textContent = 'API Key验证失败，请检查后重试';
+      errEl.style.display = 'block';
+    }
+  } catch(e){
+    errEl.textContent = '验证失败：' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// 测试API Key（简单调用一次）
+async function testApiKey(id, secret){
+  try {
+    const token = generateJwt(id, secret);
+    const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:'hi'}],max_tokens:5})
+    });
+    return resp.ok;
+  } catch(e){ return false; }
+}
+
+// ============================================================
+// JWT 签名（纯JS实现，用于智谱API认证）
+// ============================================================
+async function generateJwt(apiKeyId, apiKeySecret){
+  // header
+  const header = btoa(JSON.stringify({alg:'HS256',sign_type:'SIGN'})).replace(/=+$/,'');
+  // payload
+  const now = Math.floor(Date.now()/1000);
+  const payload = btoa(JSON.stringify({api_key:id,exp:now+3600,timestamp:now})).replace(/=+$/,'');
+  const signStr = header + '.' + payload;
+  // HMAC-SHA256签名
+  const sig = await hmacSha256(signStr, apiKeySecret);
+  return signStr + '.' + sig;
+}
+
+async function hmacSha256(message, secret){
+  const enc = new TextEncoder();
+  const keyData = enc.encode(secret);
+  const msgData = enc.encode(message);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyData, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  return btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+// ============================================================
+// 直调智谱API（核心函数）
+// ============================================================
+async function callZhipu(systemPrompt, userPrompt, onChunk){
+  // onChunk: 流式输出回调 (textChunk: string) => void
+  if(!currentApiKeyId || !currentApiKeySecret){
+    throw new Error('未配置API Key，请点击右上角「API Key」配置，或进入Demo模式');
+  }
+  const token = await generateJwt(currentApiKeyId, currentApiKeySecret);
+  const temperature = parseFloat(document.getElementById('vTemp').textContent);
+  const body = {
+    model: 'glm-4-flash',
+    messages: [
+      {role:'system', content: systemPrompt},
+      {role:'user', content: userPrompt}
+    ],
+    temperature: temperature,
+    stream: true
+  };
+  
+  abortController = new AbortController();
+  const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body: JSON.stringify(body),
+    signal: abortController.signal
+  });
+  
+  if(!resp.ok){
+    const errText = await resp.text();
+    throw new Error('API调用失败(' + resp.status + ')：' + errText.slice(0,200));
+  }
+  
+  // 解析SSE流
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  
+  while(true){
+    const {done, value} = await reader.read();
+    if(done) break;
+    buffer += decoder.decode(value, {stream:true});
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for(const line of lines){
+      if(line.startsWith('data: ')){
+        const data = line.slice(6);
+        if(data === '[DONE]') return fullText;
+        try {
+          const json = JSON.parse(data);
+          const chunk = (json.choices&&json.choices[0]&&json.choices[0].delta&&json.choices[0].delta.content)||'';
+          fullText += chunk;
+          if(onChunk && chunk) onChunk(chunk);
+        } catch(e){}
+      }
+    }
+  }
+  return fullText;
+}
+
+// ============================================================
+// 日志
+// ============================================================
+function log(msg, type='info'){
+  const p = document.getElementById('logPanel');
+  const d = new Date();
+  const ts = d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">${ts}</span><span class="log-msg ${type}">${escHtml(msg)}</span>`;
   p.appendChild(div);
-  p.scrollTop=p.scrollHeight;
+  p.scrollTop = p.scrollHeight;
 }
 
-// === Agent节点状态 ===
-function setNode(name,state){
-  const el=document.getElementById('nd-'+name);
-  if(!el)return;
+// ============================================================
+// Agent节点状态
+// ============================================================
+function setNode(name, state){
+  const el = document.getElementById('nd-'+name);
+  if(!el) return;
   el.classList.remove('active','running','done');
-  const s=el.querySelector('.status');
-  if(state==='running'){el.classList.add('running','active');s.textContent='运行中...';}
-  else if(state==='done'){el.classList.add('done');s.textContent='✓ 完成';}
-  else if(state==='error'){el.classList.add('active');s.style.color='var(--danger)';s.textContent='✗ 出错';}
-  else{s.textContent='等待中';s.style.color='';}
+  const s = el.querySelector('.status');
+  if(!s) return;
+  if(state === 'running'){ el.classList.add('running','active'); s.textContent='运行中...'; }
+  else if(state === 'done'){ el.classList.add('done'); s.textContent='✓ 完成'; }
+  else if(state === 'error'){ el.classList.add('active'); s.style.color='var(--danger)'; s.textContent='✗ 出错'; }
+  else { s.textContent='等待中'; s.style.color=''; }
 }
 
-// === 管道步骤 ===
-function setPipe(step,state){
-  const el=document.querySelector(`.pipe-step[data-s="${step}"]`);
-  if(!el)return;
+function setPipe(step, state){
+  const el = document.querySelector(`.pipe-step[data-s="${step}"]`);
+  if(!el) return;
   el.classList.remove('active','done','error');
-  if(state==='active')el.classList.add('active');
-  if(state==='done')el.classList.add('done');
-  if(state==='error')el.classList.add('error');
-  const ar=document.querySelector(`.pipe-arrow[data-a="${step}"]`);
-  if(ar)ar.classList.toggle('lit',state==='done');
+  if(state==='active') el.classList.add('active');
+  if(state==='done') el.classList.add('done');
+  if(state==='error') el.classList.add('error');
+  const ar = document.querySelector(`.pipe-arrow[data-a="${step}"]`);
+  if(ar) ar.classList.toggle('lit', state==='done');
 }
 
-// === 计时器 ===
+// ============================================================
+// 计时器
+// ============================================================
 function startTimer(){
-  startTime=Date.now();
-  document.getElementById('liveBadge').style.display='';
-  timerInterval=setInterval(()=>{
-    const s=Math.floor((Date.now()-startTime)/1000);
-    document.getElementById('timerDisplay').textContent=Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');
-  },1000);
+  startTime = Date.now();
+  document.getElementById('liveBadge').style.display = '';
+  timerInterval = setInterval(()=>{
+    const s = Math.floor((Date.now()-startTime)/1000);
+    document.getElementById('timerDisplay').textContent = Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');
+  }, 1000);
 }
 function stopTimer(){
   clearInterval(timerInterval);
-  document.getElementById('liveBadge').style.display='none';
+  document.getElementById('liveBadge').style.display = 'none';
 }
 
-// === 获取画像 ===
+// ============================================================
+// 获取画像
+// ============================================================
 function getProfile(){
   return {
-    background:document.getElementById('inpBg').value,
-    experience:document.getElementById('inpExp').value,
-    goal:document.getElementById('inpGoal').value,
-    level:document.getElementById('inpLvl').value
+    background: document.getElementById('inpBg').value,
+    experience: document.getElementById('inpExp').value,
+    goal: document.getElementById('inpGoal').value,
+    level: document.getElementById('inpLvl').value
   };
 }
 
-// === SSE启动 ===
-function startPipeline(){
-  const profile=getProfile();
-  if(!profile.background.trim()){alert('请填写背景描述');return;}
+// ============================================================
+// 启动全流程（前端直调智谱API）
+// ============================================================
+async function startPipeline(){
+  const profile = getProfile();
+  if(!profile.background.trim()){ alert('请填写背景描述'); return; }
+  
   // 重置
-  agentResults={};
-  document.getElementById('resultsArea').innerHTML='';
-  document.getElementById('metricsRow').style.display='flex';
-  document.getElementById('btnStart').disabled=true;
-  document.getElementById('btnStop').style.display='block';
-  AGENTS.forEach(n=>setNode(n,''));
-  [1,2,3,4,5,6,7].forEach(s=>setPipe(s,null));
-  log('🚀 启动全流程协同调度…','info');
+  agentResults = {};
+  document.getElementById('resultsArea').innerHTML = '';
+  document.getElementById('metricsRow').style.display = 'flex';
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').style.display = 'block';
+  AGENTS.forEach(n => setNode(n, ''));
+  [1,2,3,4,5,6,7].forEach(s => setPipe(s, null));
+  document.getElementById('mAgents').textContent = '0/7';
+  document.getElementById('mTime').textContent = '0s';
+  document.getElementById('mHalluc').textContent = '-';
+  document.getElementById('mAcc').textContent = '-';
+  document.getElementById('mQuiz').textContent = '-';
+  
+  log('🚀 启动全流程协同调度（前端直调模式）...','info');
+  if(!currentApiKey){
+    log('⚠️ 未配置API Key，将使用Demo模式（预置数据）','warn');
+  }
   startTimer();
-
-  // 创建AbortController用于停止
-  abortController=new AbortController();
-
-  // 用SSE接收实时事件
-  fetch('/api/stream',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({profile}),
-    signal:abortController.signal
-  }).then(response=>{
-    const reader=response.body.getReader();
-    const decoder=new TextDecoder();
-    let buffer='';
-
-    function read(){
-      reader.read().then(({done,value})=>{
-        if(done){stopTimer();onComplete();return;}
-        buffer+=decoder.decode(value,{stream:true});
-        // 解析SSE
-        const lines=buffer.split('\n');
-        buffer=lines.pop()||'';
-        for(const line of lines){
-          if(line.startsWith('data: ')){
-            try{handleEvent(JSON.parse(line.slice(6)));}catch(e){}
-          }
-        }
-        read();
-      }).catch(e=>{
-        if(e.name==='AbortError'){log('⏹ 请求已中止','warn');}
-        else{log('连接异常: '+e.message,'error');}
-        stopTimer();onComplete();
-      });
-    }
-    read();
-  }).catch(e=>{
-    if(e.name==='AbortError'){log('⏹ 请求已中止','warn');}
-    else{log('启动失败: '+e.message,'error');}
-    stopTimer();onComplete();
-  });
+  
+  try {
+    // Step 1: 学情诊断
+    setPipe(1,'active');
+    setNode('diagnosis','running');
+    log('🔍 学情诊断Agent 开始运行...','info');
+    const diagResult = await runAgentFrontend('diagnosis', profile);
+    agentResults['diagnosis'] = diagResult;
+    setNode('diagnosis','done');
+    setPipe(1,'done');
+    renderCard('diagnosis', diagResult);
+    updateMetrics();
+    log('✅ 学情诊断完成','success');
+    
+    // Step 2: 知识生成
+    setPipe(2,'active');
+    setNode('knowledge_gen','running');
+    log('📚 知识生成Agent 开始运行...','info');
+    const knowResult = await runAgentFrontend('knowledge_gen', {diagnosis: diagResult, profile: profile});
+    agentResults['knowledge_gen'] = knowResult;
+    setNode('knowledge_gen','done');
+    setPipe(2,'done');
+    renderCard('knowledge_gen', knowResult);
+    updateMetrics();
+    log('✅ 知识生成完成','success');
+    
+    // Step 3: 审核裁判
+    setPipe(3,'active');
+    setNode('reviewer','running');
+    log('🔎 审核裁判Agent 开始运行（含辩论机制）...','info');
+    const reviewResult = await runAgentFrontend('reviewer', {content: knowResult.content||'', source_refs: knowResult.source_refs||[]});
+    agentResults['reviewer'] = reviewResult;
+    setNode('reviewer','done');
+    setPipe(3,'done');
+    renderCard('reviewer', reviewResult);
+    updateMetrics();
+    log('✅ 审核裁判完成，幻觉分数：'+(reviewResult.hallucination_score||0),'success');
+    
+    // Step 4: 实操指南
+    setPipe(4,'active');
+    setNode('practice_guide','running');
+    log('🔧 实操指南Agent 开始运行...','info');
+    const pracResult = await runAgentFrontend('practice_guide', {topic: diagResult.focus_topic||'Python基础', level: profile.level});
+    agentResults['practice_guide'] = pracResult;
+    setNode('practice_guide','done');
+    setPipe(4,'done');
+    renderCard('practice_guide', pracResult);
+    log('✅ 实操指南完成','success');
+    
+    // Step 5: 分阶测试
+    setPipe(5,'active');
+    setNode('quiz','running');
+    log('📝 分阶测试Agent 开始运行...','info');
+    const quizResult = await runAgentFrontend('quiz', {knowledge: knowResult, difficulty: profile.level});
+    agentResults['quiz'] = quizResult;
+    setNode('quiz','done');
+    setPipe(5,'done');
+    renderCard('quiz', quizResult);
+    updateMetrics();
+    log('✅ 分阶测试完成','success');
+    
+    // Step 6: 迭代优化
+    setPipe(6,'active');
+    setNode('iteration','running');
+    log('🔄 迭代优化Agent 开始运行...','info');
+    const iterResult = await runAgentFrontend('iteration', {quiz_result: quizResult, diagnosis: diagResult, knowledge: knowResult});
+    agentResults['iteration'] = iterResult;
+    setNode('iteration','done');
+    setPipe(6,'done');
+    renderCard('iteration', iterResult);
+    log('✅ 迭代优化完成，决策：'+(iterResult.decision||'consolidate'),'success');
+    
+    // Step 7: 苏格拉底导学
+    setPipe(7,'active');
+    setNode('socratic','running');
+    log('💬 苏格拉底导学Agent 开始运行...','info');
+    const socResult = await runAgentFrontend('socratic', {knowledge: knowResult});
+    agentResults['socratic'] = socResult;
+    setNode('socratic','done');
+    setPipe(7,'done');
+    renderCard('socratic', socResult);
+    log('✅ 苏格拉底导学完成','success');
+    
+    // 全部完成
+    log('🎉 全流程完成！7个Agent全部就绪','success');
+    
+  } catch(e){
+    log('❌ 流程出错：'+e.message,'error');
+    stopTimer();
+  } finally {
+    stopTimer();
+    onComplete();
+  }
 }
 
 function onComplete(){
-  document.getElementById('btnStart').disabled=false;
-  document.getElementById('btnStop').style.display='none';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').style.display = 'none';
 }
 
 function stopPipeline(){
-  if(abortController){abortController.abort();abortController=null;}
-  stopTimer();onComplete();
+  if(abortController) abortController.abort();
+  stopTimer();
+  onComplete();
   log('⏹ 用户手动停止','warn');
 }
 
-// === 处理事件 ===
-function handleEvent(e){
-  switch(e.type){
-    case 'start':
-      log('📋 学习者: '+(e.profile&&e.profile.background||''),'info');
-      break;
-    case 'agent_start':
-      log(`⏳ ${AGENT_ICONS[e.agent]||''} ${AGENT_LABELS[e.agent]||e.agent} 开始运行…`,'info');
-      setNode(e.agent,'running');
-      if(e.step)setPipe(e.step,'active');
-      break;
-    case 'agent_done':
-      const meta=e.result&&e.result._meta||{};
-      log(`✅ ${AGENT_LABELS[e.agent]||e.agent} 完成 (${meta.elapsed_seconds||'?'}s)`,'success');
-      setNode(e.agent,'done');
-      if(e.step)setPipe(e.step,'done');
-      agentResults[e.agent]=e.result;
-      renderCard(e.agent,e.result);
-      updateMetrics();
-      break;
-    case 'debate_round':
-      const v=e.verdict==='pass'?'✅通过':'⚠️存疑';
-      log(`⚖️ 辩论R${e.round}: ${v} (幻觉${e.hallucination_score})`,e.verdict==='pass'?'success':'warn');
-      break;
-    case 'pipeline_done':
-      log('🎉 全流程完成！所有Agent协同完毕','success');
-      stopTimer();
-      // 最终总耗时
-      const total=Math.floor((Date.now()-startTime)/1000);
-      document.getElementById('mTime').textContent=total+'s';
-      onComplete();
-      break;
-    case 'complete':
-      log('✅ 全部完成','success');
-      stopTimer();onComplete();
-      break;
-    case 'error':
-      log('❌ '+e.message,'error');
-      stopTimer();onComplete();
-      break;
+// ============================================================
+// 前端直调：运行单个Agent
+// ============================================================
+async function runAgentFrontend(agentName, context){
+  // 构造system prompt和user prompt（根据agent类型）
+  const prompts = buildPrompts(agentName, context);
+  
+  if(!currentApiKey){
+    // Demo模式：返回预置fallback数据
+    log('⚠️ 无API Key，使用Demo数据','warn');
+    return getDemoResult(agentName, context);
   }
-}
-
-// === 更新指标 ===
-function updateMetrics(){
-  let done=0;
-  AGENTS.forEach(n=>{if(agentResults[n])done++;});
-  document.getElementById('mAgents').textContent=done+'/'+AGENTS.length;
-  const total=Math.floor((Date.now()-startTime)/1000);
-  document.getElementById('mTime').textContent=total+'s';
-  const rev=agentResults['reviewer'];
-  if(rev){
-    document.getElementById('mHalluc').textContent=(rev.hallucination_score||0)+'%';
-    document.getElementById('mAcc').textContent=(rev.accuracy_score||0)+'%';
-  }
-}
-
-// === 渲染Agent结果卡片 ===
-function renderCard(name,data){
-  const area=document.getElementById('resultsArea');
-  const old=document.getElementById('card-'+name);
-  if(old)old.remove();
-
-  const meta=data._meta||{};
-  const elapsed=meta.elapsed_seconds?meta.elapsed_seconds+'s':'';
-  let html='';
-
-  if(name==='diagnosis'){
-    html=`
-      <div class="score-bar"><span class="label">水平评分</span><div class="bar"><div class="fill" style="width:${data.level_score||0}%;background:${sc(data.level_score||0)}"></div></div><span class="score-val">${data.level_score||0}</span></div>
-      <p style="font-size:11px;margin:4px 0"><strong>优势：</strong>${esc((data.strengths||[]).join('、'))||'暂无'}</p>
-      <p style="font-size:11px;margin:4px 0"><strong>盲区：</strong>${esc((data.blind_spots||[]).join('、'))||'暂无'}</p>
-      <p style="font-size:11px;margin:4px 0"><strong>重点：</strong>${esc(data.focus_topic)||'-'}</p>
-      ${data.learning_path?data.learning_path.map((p,i)=>`<div style="font-size:11px;margin:3px 0 3px 8px">${i+1}. <strong>${p.phase}</strong>：${(p.topics||[]).join('、')} <span style="color:var(--muted)">(${p.estimated_hours||'?'}h)</span></div>`).join(''):''}
-    `;
-  } else if(name==='knowledge_gen'){
-    html=`
-      <p style="font-size:12px;margin-bottom:6px"><strong>${esc(data.title)||'个性化学习内容'}</strong></p>
-      <p style="font-size:10px;color:var(--muted);margin-bottom:4px">核心概念：${esc((data.concepts||[]).join('、'))||'暂无'}</p>
-      <div class="knowledge-content">${md2html(data.content||'生成中…')}</div>
-    `;
-  } else if(name==='reviewer'){
-    const h=data.hallucination_score||0;
-    const a=data.accuracy_score||0;
-    html=`
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">幻觉分数</span><div class="bar"><div class="fill" style="width:${h}%;background:${h<20?'var(--success)':h<50?'var(--warn)':'var(--danger)'}"></div></div><span class="score-val">${h}</span></div>
-        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">准确度</span><div class="bar"><div class="fill" style="width:${a}%;background:${sc(a)}"></div></div><span class="score-val">${a}</span></div>
-      </div>
-      <p style="font-size:11px">判定：<strong style="color:${data.verdict==='pass'?'var(--success)':data.verdict==='needs_revision'?'var(--danger)':'var(--warn)'}">${vl(data.verdict)}</strong> · 辩论轮数：${data.debate_rounds||1}</p>
-      ${data.issues&&data.issues.length?`<div class="debate-panel"><strong style="font-size:11px">发现问题：</strong>`+data.issues.map(i=>`<div style="font-size:11px;margin:3px 0;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--danger)">[${esc(i.severity||'?')}]</span> ${esc(i.description)}</div>`).join('')+'</div>':''}
-      ${data.debate_log?`<div class="debate-panel" style="margin-top:4px"><strong style="font-size:11px">辩论记录：</strong>`+data.debate_log.map(l=>`<div class="debate-round"><span class="round-label">Round ${l.round}</span><div class="verdict" style="color:${l.reviewer_verdict==='pass'?'var(--success)':'var(--danger)'}">${l.reviewer_verdict} · 幻觉${l.hallucination_score}</div></div>`).join('')+'</div>':''}
-    `;
-  } else if(name==='practice_guide'){
-    html=`
-      <p style="font-size:11px;margin-bottom:6px">难度：<strong>${data.difficulty||'-'}</strong> · 预计：<strong>${data.estimated_time||'-'}</strong></p>
-      ${(data.steps||[]).map(s=>`<div style="margin:6px 0;padding:8px;background:var(--bg);border-radius:7px;border:1px solid var(--border)"><p style="font-size:12px;font-weight:600">${s.title||''}</p><p style="font-size:11px;color:var(--muted);margin-top:2px">${s.description||''}</p>${s.code?`<pre style="margin-top:4px;padding:6px;background:#0d1117;border-radius:5px;font-size:10px;overflow-x:auto">${esc(s.code)}</pre>`:''}</div>`).join('')}
-    `;
-  } else if(name==='quiz'){
-    quizData=data;
-    html=renderQuiz(data);
-  } else if(name==='iteration'){
-    const dec=data.decision||'consolidate';
-    const decLabel=data.decision_label||'巩固强化';
-    const decColor=dec==='simplify'?'var(--warn)':dec==='advance'?'var(--success)':'var(--accent)';
-    html=`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="padding:8px 16px;border-radius:8px;background:${decColor};color:#000;font-weight:800;font-size:14px">${decLabel}</div>
-        <div style="font-size:12px">正确率 <strong>${data.accuracy||0}%</strong> &middot; ${data.correct_count||0}/${data.total_questions||0}题</div>
-      </div>
-      <p style="font-size:11px;margin:4px 0;color:var(--muted)">${esc(data.reason||'')}</p>
-      ${data.adjustments?`
-      <div style="margin:6px 0;padding:8px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-        <p style="font-size:11px"><strong>难度调整：</strong>${(data.adjustments.difficulty_shift||0)>0?'+':''}${data.adjustments.difficulty_shift||0}</p>
-        <p style="font-size:11px;margin-top:3px"><strong>重点关注：</strong>${esc((data.adjustments.focus_topics||[]).join('、'))}</p>
-        ${data.adjustments.skip_topics&&data.adjustments.skip_topics.length?`<p style="font-size:11px;margin-top:3px"><strong>可跳过：</strong>${esc(data.adjustments.skip_topics.join('、'))}</p>`:''}
-        <p style="font-size:11px;margin-top:3px"><strong>教学方式：</strong>${esc(data.adjustments.new_approach||'-')}</p>
-      </div>`:''}
-      ${data.next_steps?data.next_steps.map(s=>`<div style="font-size:11px;margin:3px 0;padding:3px 8px;border-left:2px solid var(--accent)"><strong>Step ${esc(String(s.step))}:</strong> ${esc(s.action)} &rarr; ${esc(s.agent)} (${esc(s.description)})</div>`).join(''):''}
-      <div class="iter-actions">
-        <button class="btn primary" onclick="applyIteration('${dec}')">✅ 应用${decLabel}策略</button>
-        <button class="btn" onclick="reRunQuiz()">📝 重新测试</button>
-        <button class="btn warn" onclick="forceAdvance()">⏩ 强制进阶</button>
-      </div>
-    `;
-    document.getElementById('mIter').textContent=decLabel;
-  } else if(name==='socratic'){
-    const sections=data.sections||[];
-    html=`
-      <p style="font-size:12px;margin-bottom:6px"><strong>${esc(data.title||'启发式导学')}</strong></p>
-      ${sections.map((s,i)=>`
-      <div style="margin:8px 0;padding:10px;background:var(--bg);border-radius:7px;border:1px solid var(--border);border-left:3px solid var(--accent2)">
-        <div style="font-size:11px;margin-bottom:4px">${esc(s.content||'')}</div>
-        <div style="font-size:12px;font-weight:700;color:var(--accent2);margin:4px 0">\u{1F4AD} ${esc(s.question||'')}</div>
-        <div style="font-size:10px;color:var(--muted);margin:2px 0">\u{1F4A1} 提示：${esc(s.hint||'')}</div>
-        <div style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(108,92,231,.15);color:var(--accent2);margin-top:3px">${{understanding:'理解层',application:'应用层',analysis:'分析层',evaluation:'评价层'}[s.depth]||s.depth||'?'}</div>
-        ${s.follow_ups?`<div style="font-size:10px;color:var(--muted);margin-top:4px">追问方向：${esc(s.follow_ups.join(' / '))}</div>`:''}
-        <button class="btn" style="margin-top:6px;background:rgba(108,92,231,.15);color:var(--accent2);font-size:10px;padding:4px 10px;border:1px solid var(--accent2)" onclick="startSocraticChat(${i})">\u{1F4AC} 开始对话</button>
-        <div id="socratic-chat-${i}" style="display:none;margin-top:8px"></div>
-      </div>`).join('')}
-      ${data.reflection_prompts?`<div style="margin-top:8px;padding:8px;background:rgba(0,212,170,.06);border-radius:7px;border:1px solid var(--border)"><p style="font-size:11px;font-weight:700;color:var(--accent)">\u{1F504} 反思性问题</p>${data.reflection_prompts.map(p=>`<p style="font-size:11px;margin:3px 0">&bull; ${esc(p)}</p>`).join('')}</div>`:''}
-    `;
-  }
-
-  const card=document.createElement('div');
-  card.className='result-card';
-  card.id='card-'+name;
-  card.innerHTML=`<h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} <span class="elapsed">${elapsed}</span></h4><div>${html}</div>`;
-  area.appendChild(card);
-  card.scrollIntoView({behavior:'smooth',block:'nearest'});
-
-  // 渲染学情雷达图
-  if(name==='diagnosis')renderRadar(data);
-}
-
-// === 测验渲染 ===
-function renderQuiz(data){
-  const qs=data.questions||[];
-  let h=`<p style="font-size:11px;margin-bottom:6px">共${qs.length}题 · 总分${data.total_score||100} · 及格${data.passing_score||60}</p><div id="quizBox">`;
-  qs.forEach((q,i)=>{
-    const opts=(q.options||[]).map((o,j)=>`<div class="quiz-opt" onclick="pickOpt(this,${i},${j})">${'ABCD'[j]}. ${esc(o)}</div>`).join('');
-    h+=`<div class="quiz-q"><div class="q-text"><strong>${i+1}.</strong> [${q.type==='choice'?'选择':q.type==='coding'?'编程':'简答'}] ${esc(q.question)}</div><div class="quiz-opts">${opts}</div><div class="quiz-explain" id="expl-${i}" style="display:none;margin-top:4px;font-size:10px;color:var(--muted);padding:5px;background:var(--bg);border-radius:5px"></div></div>`;
-  });
-  h+=`</div><button class="btn" style="margin-top:6px;background:var(--accent);color:#000;font-size:11px;padding:6px 12px" onclick="gradeQuiz()">📊 批改评分</button><div id="quizResult"></div>`;
-  return h;
-}
-
-function pickOpt(el,qi,oi){
-  const c=el.closest('.quiz-opts');
-  c.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('selected'));
-  el.classList.add('selected');
-}
-
-function gradeQuiz(){
-  if(!quizData)return;
-  const qs=quizData.questions||[];
-  let correct=0;
-  qs.forEach((q,i)=>{
-    const opts=document.querySelectorAll(`#card-quiz .quiz-q:nth-child(${i+1}) .quiz-opt`);
-    let userAns=-1;
-    opts.forEach((o,j)=>{if(o.classList.contains('selected'))userAns=j;});
-    const expl=document.getElementById(`expl-${i}`);
-    if(expl){expl.style.display='';expl.textContent='\u{1F4A1} '+(q.explanation||'暂无解析');}
-    // 标准化correct为数字索引
-    let correctIdx=q.correct;
-    if(typeof correctIdx==='string'){
-      const upper=correctIdx.toUpperCase();
-      if('ABCD'.includes(upper))correctIdx='ABCD'.indexOf(upper);
-      else if(!isNaN(correctIdx))correctIdx=parseInt(correctIdx);
-      else correctIdx=0;
-    }
-    correctIdx=Math.max(0,Math.min(3,Number(correctIdx)||0));
-    opts.forEach((o,j)=>{
-      if(j===correctIdx)o.classList.add('correct');
-      if(j===userAns&&j!==correctIdx)o.classList.add('wrong');
+  
+  try {
+    // 调用智谱API（带流式输出）
+    let outputBuffer = '';
+    const startTime = Date.now();
+    
+    // 在对应卡片显示"生成中..."动画
+    showAgentLoading(agentName);
+    
+    const fullText = await callZhipu(prompts.system, prompts.user, (chunk)=>{
+      outputBuffer += chunk;
+      updateAgentStreamingText(agentName, outputBuffer);
     });
-    if(userAns===correctIdx)correct++;
-  });
-  const score=Math.round(correct/qs.length*100);
-  document.getElementById('quizResult').innerHTML=`<div class="quiz-result" style="color:${score>=60?'var(--success)':'var(--danger)'}">📊 得分：${score}/100 · 正确${correct}/${qs.length}</div>`;
-  document.getElementById('mQuiz').textContent=score;
+    
+    // 解析LLM输出为结构化JSON
+    const parsed = parseLLMOutput(fullText);
+    
+    // 可选：把结果发到后端做结构化验证（非必须）
+    parsed['_meta'] = {agent: agentName, elapsed_seconds: Math.floor((Date.now()-startTime)/1000), source: 'frontend_llm'};
+    return parsed;
+    
+  } catch(e){
+    log(`${AGENT_LABELS[agentName]} API调用失败：${e.message}，使用fallback数据`,'warn');
+    return getDemoResult(agentName, context);
+  }
 }
 
-// === 单步调试 ===
+// ============================================================
+// 构造各Agent的Prompt
+// ============================================================
+function buildPrompts(agentName, context){
+  const profile = getProfile();
+  let system = '';
+  let user = '';
+  
+  if(agentName === 'diagnosis'){
+    system = `你是专业的学情诊断专家。根据学习者的背景，输出JSON格式的诊断结果。
+要求输出严格JSON：{"learner_level":"beginner/intermediate/advanced","level_score":50,"strengths":["优势1","优势2"],"blind_spots":["盲区1","盲区2"],"focus_topic":"建议学习的重点主题","learning_path":[{"phase":"夯实基础","topics":["topic1"],"estimated_hours":20}]}`;
+    user = `学习者背景：${context.background}\n编程经验：${context.experience}\n学习目标：${context.goal}\n自评水平：${context.level}\n\n请输出JSON诊断结果：`;
+  }
+  else if(agentName === 'knowledge_gen'){
+    system = `你是个性化知识生成专家。根据学情诊断结果，生成针对性学习内容。
+要求输出严格JSON：{"title":"内容标题","content":"Markdown格式的详细学习内容","concepts":["概念1","概念2"],"source_refs":[{"source":"来源文件名","type":"[教材]/[论文]/[官方]/[实践]"}]}`;
+    user = `诊断结果：${JSON.stringify(context.diagnosis)}\n学习者画像：${JSON.stringify(context.profile)}\n请生成个性化学习内容：`;
+  }
+  else if(agentName === 'reviewer'){
+    system = `你是内容审核专家，负责检测知识内容中的幻觉（不准确信息）。
+要求输出严格JSON：{"verdict":"pass/pass_with_concerns/needs_revision","hallucination_score":15,"accuracy_score":85,"issues":[{"severity":"high/medium/low","description":"问题描述"}],"debate_rounds":2,"debate_log":[{"round":1,"reviewer_verdict":"pass","hallucination_score":15}]}`;
+    user = `待审核内容：\n${context.content}\n\n来源标注：${JSON.stringify(context.source_refs)}\n\n请审核并输出JSON：`;
+  }
+  else if(agentName === 'practice_guide'){
+    system = `你是实操指导专家。根据学习主题和水平，生成实操步骤指南。
+要求输出严格JSON：{"difficulty":"easy/medium/hard","estimated_time":"2-4小时","steps":[{"title":"步骤标题","description":"步骤说明","code":"可选的代码"}]}`;
+    user = `主题：${context.topic}\n水平：${context.level}\n请生成实操指南：`;
+  }
+  else if(agentName === 'quiz'){
+    system = `你是测试题目生成专家。根据知识内容，生成分阶测试题。
+要求输出严格JSON：{"questions":[{"type":"choice","question":"题目","options":["A","B","C","D"],"correct":0,"explanation":"解析"}],"total_score":100,"passing_score":60}`;
+    user = `知识内容：${(context.knowledge&&context.knowledge.content)||''}\n难度：${context.difficulty}\n请生成测试题：`;
+  }
+  else if(agentName === 'iteration'){
+    system = `你是学习迭代优化专家。根据测验结果和诊断，决定下一步学习策略。
+要求输出严格JSON：{"decision":"simplify/advance/consolidate","adjustments":{"focus_topics":["topic1"]},"suggestion":"建议文字"}`;
+    user = `测验结果：${JSON.stringify(context.quiz_result)}\n诊断：${JSON.stringify(context.diagnosis)}\n请输出迭代决策：`;
+  }
+  else if(agentName === 'socratic'){
+    system = `你是苏格拉底式导学专家。根据知识内容，生成引导式问题和对话。
+要求输出严格JSON：{"response":"引导式回复","questions":[{"question":"问题","purpose":"目的"}]}`;
+    user = `知识内容：${(context.knowledge&&context.knowledge.content)||''}\n请生成苏格拉底导学内容：`;
+  }
+  
+  return {system, user};
+}
+
+// ============================================================
+// 解析LLM输出（处理markdown代码块等）
+// ============================================================
+function parseLLMOutput(text){
+  if(!text) return getDemoResult('fallback', {});
+  let cleaned = text.trim();
+  
+  // 去掉```json ... ``` 或 ``` ... ```
+  const codeBlock = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if(codeBlock) cleaned = codeBlock[1].trim();
+  
+  // 尝试直接解析
+  try {
+    return JSON.parse(cleaned);
+  } catch(e){}
+  
+  // 找第一个{ 到最后一个}
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if(start >= 0 && end > start){
+    try {
+      return JSON.parse(cleaned.slice(start, end+1));
+    } catch(e){}
+  }
+  
+  // 实在解析不了，返回文本包装
+  return {content: text, _parse_error: '无法解析为JSON'};
+}
+
+// ============================================================
+// Demo/Fallback数据
+// ============================================================
+function getDemoResult(agentName, context){
+  if(agentName === 'diagnosis') return {"learner_level":"intermediate","level_score":62,"strengths":["有C语言基础","了解基本数据结构"],"blind_spots":["Python生态不熟悉","AI框架未接触"],"focus_topic":"Python编程基础","learning_path":[{"phase":"夯实基础","topics":["Python语法","数据结构"],"estimated_hours":20},{"phase":"核心掌握","topics":["NumPy","Pandas"],"estimated_hours":30}],"_demo":true};
+  if(agentName === 'knowledge_gen') return {"title":"Python编程基础","content":"## Python基础\n\nPython是一种广泛使用的高级编程语言...\n\n### 变量与类型\n\nPython中变量无需声明类型...\n\n### 函数定义\n\n```python\ndef greet(name):\n    return f'Hello, {name}'\n```","concepts":["变量","函数","列表","字典"],"source_refs":[{"source":"python_basics.md","type":"[教材]"}],"_demo":true};
+  if(agentName === 'reviewer') return {"verdict":"pass","hallucination_score":15,"accuracy_score":88,"issues":[],"debate_rounds":1,"_demo":true};
+  if(agentName === 'practice_guide') return {"difficulty":"medium","estimated_time":"2-3小时","steps":[{"title":"环境搭建","description":"安装Python和VS Code"},{"title":"第一个程序","description":"编写Hello World","code":"print('Hello, World!')"}],"_demo":true};
+  if(agentName === 'quiz') return {"questions":[{"type":"choice","question":"Python中哪个关键字用于定义函数？","options":["function","def","func","define"],"correct":1,"explanation":"Python使用def关键字定义函数"},{"type":"choice","question":"以下哪个是可变类型？","options":["str","tuple","list","int"],"correct":2,"explanation":"list是可变类型，str/tuple/int是不可变类型"}],"total_score":100,"passing_score":60,"_demo":true};
+  if(agentName === 'iteration') return {"decision":"consolidate","adjustments":{"focus_topics":["多练习编程题"]},"suggestion":"建议巩固基础后进入进阶","_demo":true};
+  if(agentName === 'socratic') return {"response":"看起来你对Python有一定了解，能说说你对「装饰器」的理解吗？","questions":[{"question":"装饰器的作用是什么？","purpose":"引导思考"}],"_demo":true};
+  return {"_demo":true,"content":JSON.stringify(context)};
+}
+
+// ============================================================
+// Agent运行时UI更新
+// ============================================================
+function showAgentLoading(agentName){
+  // 可以在对应卡片上显示加载动画
+}
+function updateAgentStreamingText(agentName, text){
+  // 实时显示LLM生成的文字（打字机效果）
+  // 可选实现
+}
+
+// ============================================================
+// 单步调试
+// ============================================================
 async function runSingle(agentName){
-  log(`单步运行：${AGENT_LABELS[agentName]||agentName}…`,'info');
+  log(`单步运行：${AGENT_LABELS[agentName]}...`,'info');
   setNode(agentName,'running');
-  try{
-    const bodies={
-      diagnosis:{profile:getProfile()},
-      knowledge_gen:{diagnosis:agentResults.diagnosis||{}},
-      reviewer:{content:(agentResults.knowledge_gen&&agentResults.knowledge_gen.content)||'',source_refs:[]},
-      practice_guide:{topic:(agentResults.diagnosis&&agentResults.diagnosis.focus_topic)||'Python编程基础',level:getProfile().level},
-      quiz:{knowledge:agentResults.knowledge_gen||{},difficulty:getProfile().level},
-      iteration:{quiz_result:agentResults.quiz||{},diagnosis:agentResults.diagnosis||{},knowledge:agentResults.knowledge_gen||{}},
-      socratic:{knowledge:agentResults.knowledge_gen||{}}
+  try {
+    const profile = getProfile();
+    const contexts = {
+      diagnosis: profile,
+      knowledge_gen: {diagnosis: agentResults.diagnosis||{}, profile},
+      reviewer: {content: (agentResults.knowledge_gen&&agentResults.knowledge_gen.content)||'', source_refs:[]},
+      practice_guide: {topic: (agentResults.diagnosis&&agentResults.diagnosis.focus_topic)||'Python基础', level: profile.level},
+      quiz: {knowledge: agentResults.knowledge_gen||{}, difficulty: profile.level},
+      iteration: {quiz_result: agentResults.quiz||{}, diagnosis: agentResults.diagnosis||{}, knowledge: agentResults.knowledge_gen||{}},
+      socratic: {knowledge: agentResults.knowledge_gen||{}}
     };
-    const paths={diagnosis:'/api/diagnosis',knowledge_gen:'/api/generate',reviewer:'/api/review',practice_guide:'/api/practice',quiz:'/api/quiz',iteration:'/api/feedback',socratic:'/api/socratic/embed'};
-    const res=await fetch(paths[agentName],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodies[agentName])});
-    const data=await res.json();
-    agentResults[agentName]=data;
+    const result = await runAgentFrontend(agentName, contexts[agentName]);
+    agentResults[agentName] = result;
     setNode(agentName,'done');
-    renderCard(agentName,data);
+    renderCard(agentName, result);
     log(`${AGENT_LABELS[agentName]} 单步完成 ✅`,'success');
-  }catch(e){
+    updateMetrics();
+  } catch(e){
     log(`${AGENT_LABELS[agentName]} 失败：${e.message}`,'error');
     setNode(agentName,'error');
   }
 }
 
-// === 辅助 ===
-function sc(s){return s>=80?'var(--success)':s>=50?'var(--warn)':'var(--danger)';}
-function vl(v){return{pass:'✅ 通过',pass_with_concerns:'⚠️ 有顾虑通过',needs_revision:'❌ 需修订',reject:'🚫 驳回'}[v]||v;}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// ============================================================
+// 更新指标
+// ============================================================
+function updateMetrics(){
+  let done = 0;
+  AGENTS.forEach(n => { if(agentResults[n]) done++; });
+  document.getElementById('mAgents').textContent = done+'/7';
+  const total = Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('mTime').textContent = total+'s';
+  const rev = agentResults['reviewer'];
+  if(rev){
+    document.getElementById('mHalluc').textContent = (rev.hallucination_score||0);
+    document.getElementById('mAcc').textContent = (rev.accuracy_score||0);
+  }
+}
+
+// ============================================================
+// 渲染Agent结果卡片
+// ============================================================
+function renderCard(name, data){
+  const area = document.getElementById('resultsArea');
+  const old = document.getElementById('card-'+name);
+  if(old) old.remove();
+  
+  const meta = data._meta || {};
+  const elapsed = meta.elapsed_seconds ? meta.elapsed_seconds+'s' : '';
+  let html = '';
+  
+  if(name === 'diagnosis'){
+    html = `
+      <div class="score-bar"><span class="label">水平评分</span><div class="bar"><div class="fill" style="width:${data.level_score||0}%;background:${sc(data.level_score||0)}"></div></div><span class="score-val">${data.level_score||0}</span></div>
+      <p style="font-size:11px;margin:4px 0"><strong>优势：</strong>${(data.strengths||[]).join('、')||'暂无'}</p>
+      <p style="font-size:11px;margin:4px 0"><strong>盲区：</strong>${(data.blind_spots||[]).join('、')||'暂无'}</p>
+      <p style="font-size:11px;margin:4px 0"><strong>重点：</strong>${data.focus_topic||'-'}</p>
+    `;
+  } else if(name === 'knowledge_gen'){
+    html = `
+      <p style="font-size:12px;margin-bottom:6px"><strong>${data.title||'个性化学习内容'}</strong> ${data._demo?'<span style="color:var(--warn);font-size:10px">[Demo模式]</span>':''}</p>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:4px">核心概念：${(data.concepts||[]).join('、')||'暂无'}</p>
+      <div class="knowledge-content">${md2html(data.content||'生成中…')}</div>
+    `;
+  } else if(name === 'reviewer'){
+    const h = data.hallucination_score||0;
+    const a = data.accuracy_score||0;
+    html = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">幻觉分数</span><div class="bar"><div class="fill" style="width:${h}%;background:${h<20?'var(--success)':h<50?'var(--warn)':'var(--danger)'}"></div></div><span class="score-val">${h}</span></div>
+        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">准确度</span><div class="bar"><div class="fill" style="width:${a}%;background:${sc(a)}"></div></div><span class="score-val">${a}</span></div>
+      </div>
+      <p style="font-size:11px">判定：<strong style="color:${data.verdict==='pass'?'var(--success)':data.verdict==='needs_revision'?'var(--danger)':'var(--warn)'}">${vl(data.verdict)}</strong> · 辩论轮数：${data.debate_rounds||1}</p>
+    `;
+  } else if(name === 'practice_guide'){
+    html = `
+      <p style="font-size:11px;margin-bottom:6px">难度：<strong>${data.difficulty||'-'}</strong> · 预计：<strong>${data.estimated_time||'-'}</strong></p>
+      ${(data.steps||[]).map(s=>`<div style="margin:6px 0;padding:8px;background:var(--bg);border-radius:7px;border:1px solid var(--border)"><p style="font-size:12px;font-weight:600">${s.title||''}</p><p style="font-size:11px;color:var(--muted);margin-top:2px">${s.description||''}</p>${s.code?`<pre style="margin-top:4px;padding:6px;background:#0d1117;border-radius:5px;font-size:10px;overflow-x:auto">${escHtml(s.code)}</pre>`:''}</div>`).join('')}
+    `;
+  } else if(name === 'quiz'){
+    quizData = data;
+    html = renderQuiz(data);
+  } else if(name === 'iteration'){
+    html = `
+      <p style="font-size:12px;margin-bottom:6px">决策：<strong style="color:${data.decision==='advance'?'var(--success)':data.decision==='simplify'?'var(--warn)':'var(--accent)'}">${data.decision||'consolidate'}</strong></p>
+      <p style="font-size:11px;color:var(--muted)">${data.suggestion||''}</p>
+    `;
+  } else if(name === 'socratic'){
+    html = `
+      <div style="margin:8px 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <p style="font-size:12px;margin-bottom:6px"><strong>💬 引导对话</strong></p>
+        <p style="font-size:11px;line-height:1.6">${escHtml((data.response||'请在下方输入问题开始对话'))}</p>
+      </div>
+      <div style="margin-top:8px">
+        <p style="font-size:10px;color:var(--muted);margin-bottom:4px">引导问题：</p>
+        ${(data.questions||[]).map(q=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${escHtml(q.question||'')} <span style="color:var(--muted);font-size:9px">${escHtml(q.purpose||'')}</span></div>`).join('')}
+      </div>
+    `;
+  }
+  
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.id = 'card-'+name;
+  card.innerHTML = `<h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} <span class="elapsed">${elapsed}</span></h4><div>${html}</div>`;
+  area.appendChild(card);
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ============================================================
+// 测验渲染
+// ============================================================
+function renderQuiz(data){
+  const qs = data.questions || [];
+  let h = `<p style="font-size:11px;margin-bottom:6px">共${qs.length}题 · 总分${data.total_score||100} · 及格${data.passing_score||60}</p><div id="quizBox">`;
+  qs.forEach((q,i)=>{
+    const opts = (q.options||[]).map((o,j)=>`<div class="quiz-opt" onclick="pickOpt(this,${i},${j})">${'ABCD'[j]}. ${escHtml(o)}</div>`).join('');
+    h += `<div class="quiz-q"><div class="q-text"><strong>${i+1}.</strong> [${q.type==='choice'?'选择':q.type==='coding'?'编程':'简答'}] ${escHtml(q.question)}</div><div class="quiz-opts">${opts}</div><div class="quiz-explain" id="expl-${i}" style="display:none;margin-top:4px;font-size:10px;color:var(--muted);padding:5px;background:var(--bg);border-radius:5px"></div></div>`;
+  });
+  h += `</div><button class="btn" style="margin-top:6px;background:var(--accent);color:#000;font-size:11px;padding:6px 12px" onclick="gradeQuiz()">📊 批改评分</button><div id="quizResult"></div>`;
+  return h;
+}
+
+function pickOpt(el, qi, oi){
+  const c = el.closest('.quiz-q');
+  c.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function gradeQuiz(){
+  if(!quizData) return;
+  const qs = quizData.questions || [];
+  let correct = 0;
+  qs.forEach((q,i)=>{
+    const opts = document.querySelectorAll(`#card-quiz .quiz-q:nth-child(${i+1}) .quiz-opt`);
+    let userIdx = -1;
+    opts.forEach((o,j)=>{ if(o.classList.contains('selected')) userIdx=j; });
+    const expl = document.getElementById(`expl-${i}`);
+    if(expl){ expl.style.display=''; expl.textContent='💡 '+(q.explanation||'暂无解析'); }
+    const correctIdx = q.correct;
+    opts.forEach((o,j)=>{
+      if(j===correctIdx) o.classList.add('correct');
+      if(j===userIdx && j!==correctIdx) o.classList.add('wrong');
+    });
+    if(userIdx===correctIdx) correct++;
+  });
+  const score = Math.round(correct/qs.length*100);
+  document.getElementById('quizResult').innerHTML = `<div class="quiz-result" style="color:${score>=60?'var(--success)':'var(--danger)'}">📊 得分：${score}/100 · 正确${correct}/${qs.length}</div>`;
+  document.getElementById('mQuiz').textContent = score;
+}
+
+// ============================================================
+// 辅助函数
+// ============================================================
+function sc(s){ return s>=80?'var(--success)':s>=50?'var(--warn)':'var(--danger)'; }
+function vl(v){ return {pass:'✅ 通过',pass_with_concerns:'⚠️ 有顾虑通过',needs_revision:'❌ 需修订',reject:'🚫 驳回'}[v]||v; }
+function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function md2html(md){
-  if(!md)return '';
-  // 先HTML转义防XSS，再做Markdown替换
-  let s=esc(md);
-  return s.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  if(!md) return '';
+  return md.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
 }
 
-// === 学情雷达图 ===
-function renderRadar(data){
-  const dims=['编程基础','算法思维','数学基础','项目经验','理论理解','自学能力'];
-  const strengths=data.strengths||[];
-  const blind=data.blind_spots||[];
-  // 估算各维度分数（基于关键词匹配 + 基础分 + level_score锚定）
-  const levelScore = data.level_score || 40;
-  const scores=dims.map(d=>{
-    let base=levelScore * 0.6 + 10; // 基于诊断分数锚定
-    const keyword = d.replace('基础','').replace('思维','').replace('经验','').replace('理解','').replace('能力','');
-    if(strengths.some(s=>s.includes(keyword)))base+=25;
-    if(blind.some(s=>s.includes(keyword)))base-=20;
-    return Math.min(100,Math.max(5,Math.round(base)));
-  });
-  
-  const canvas=document.createElement('canvas');
-  canvas.width=280;canvas.height=280;
-  const card=document.getElementById('card-diagnosis');
-  if(!card)return;
-  card.querySelector('div').appendChild(canvas);
-  
-  const ctx=canvas.getContext('2d');
-  const cx=140,cy=140,r=100;
-  const n=dims.length;
-  const dpr=window.devicePixelRatio||1;
-  canvas.width=280*dpr;canvas.height=280*dpr;
-  canvas.style.width='280px';canvas.style.height='280px';
-  ctx.scale(dpr,dpr);
-  
-  // 画背景网格
-  for(let ring=1;ring<=4;ring++){
-    ctx.beginPath();
-    const rr=r*ring/4;
-    for(let i=0;i<=n;i++){
-      const a=Math.PI*2*i/n-Math.PI/2;
-      ctx[i?'lineTo':'moveTo'](cx+rr*Math.cos(a),cy+rr*Math.sin(a));
+// ============================================================
+// 移动端侧边栏
+// ============================================================
+function toggleSidebar(){
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('mobile-show');
+}
+
+// 点击内容区关闭侧边栏（移动端）
+document.addEventListener('click', function(e){
+  const sb = document.getElementById('sidebar');
+  if(window.innerWidth <= 768 && sb.classList.contains('mobile-show')){
+    if(!sb.contains(e.target) && !e.target.closest('.mobile-toggle')){
+      sb.classList.remove('mobile-show');
     }
-    ctx.strokeStyle='rgba(30,42,66,0.8)';ctx.stroke();
   }
-  // 画轴线
-  for(let i=0;i<n;i++){
-    const a=Math.PI*2*i/n-Math.PI/2;
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
-    ctx.strokeStyle='rgba(30,42,66,0.5)';ctx.stroke();
-  }
-  // 画数据区域
-  ctx.beginPath();
-  scores.forEach((s,i)=>{
-    const a=Math.PI*2*i/n-Math.PI/2;
-    const rr=r*s/100;
-    ctx[i?'lineTo':'moveTo'](cx+rr*Math.cos(a),cy+rr*Math.sin(a));
-  });
-  ctx.closePath();
-  ctx.fillStyle='rgba(0,212,170,0.15)';ctx.fill();
-  ctx.strokeStyle='rgba(0,212,170,0.8)';ctx.lineWidth=2;ctx.stroke();
-  // 画数据点
-  scores.forEach((s,i)=>{
-    const a=Math.PI*2*i/n-Math.PI/2;
-    const rr=r*s/100;
-    ctx.beginPath();ctx.arc(cx+rr*Math.cos(a),cy+rr*Math.sin(a),3,0,Math.PI*2);
-    ctx.fillStyle='#00d4aa';ctx.fill();
-  });
-  // 标签
-  ctx.fillStyle='#8892a8';ctx.font='10px sans-serif';ctx.textAlign='center';
-  dims.forEach((d,i)=>{
-    const a=Math.PI*2*i/n-Math.PI/2;
-    ctx.fillText(d,cx+(r+18)*Math.cos(a),cy+(r+18)*Math.sin(a)+3);
-  });
-}
-
-// === 启发式导学对话 ===
-let socraticHistory=[];
-async function startSocraticChat(sectionIdx){
-  const chatDiv=document.getElementById('socratic-chat-'+sectionIdx);
-  if(!chatDiv)return;
-  chatDiv.style.display='block';
-  chatDiv.innerHTML=`
-    <div style="max-height:180px;overflow-y:auto;margin-bottom:6px" id="socratic-msgs-${sectionIdx}"></div>
-    <div style="display:flex;gap:4px">
-      <input id="socratic-input-${sectionIdx}" style="flex:1;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;outline:none" placeholder="输入你的思考..." onkeydown="if(event.key==='Enter')sendSocraticMsg(${sectionIdx})">
-      <button class="btn" style="background:var(--accent2);color:#fff;font-size:10px;padding:4px 10px" onclick="sendSocraticMsg(${sectionIdx})">发送</button>
-    </div>`;
-  socraticHistory=[];
-}
-
-async function sendSocraticMsg(sectionIdx){
-  const input=document.getElementById('socratic-input-'+sectionIdx);
-  const msgs=document.getElementById('socratic-msgs-'+sectionIdx);
-  if(!input||!msgs)return;
-  const text=input.value.trim();
-  if(!text)return;
-  input.value='';
-  
-  // 显示用户消息
-  socraticHistory.push({role:'learner',text});
-  msgs.innerHTML+=`<div style="margin:3px 0;text-align:right"><span style="display:inline-block;padding:4px 8px;background:rgba(108,92,231,.15);border-radius:6px;font-size:11px">${esc(text)}</span></div>`;
-  
-  // 显示加载指示器
-  const loadingId='loading-'+Date.now();
-  msgs.innerHTML+=`<div id="${loadingId}" style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(0,212,170,.1);border-radius:6px;font-size:11px;color:var(--muted)">思考中...</span></div>`;
-  msgs.scrollTop=msgs.scrollHeight;
-  
-  try{
-    const knowledge=agentResults.knowledge_gen||{};
-    const res=await fetch('/api/socratic/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({knowledge,conversation_history:socraticHistory})});
-    const data=await res.json();
-    const ld=document.getElementById(loadingId);
-    if(ld)ld.remove();
-    
-    const response=data.response||data.summary||'请继续思考...';
-    socraticHistory.push({role:'tutor',text:response});
-    msgs.innerHTML+=`<div style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(0,212,170,.08);border-radius:6px;font-size:11px;color:var(--accent)">\u{1F3AF} ${esc(response)}</span></div>`;
-    
-    if(data.next_question){
-      msgs.innerHTML+=`<div style="margin:3px 0"><span style="display:inline-block;padding:4px 8px;background:rgba(108,92,231,.1);border-radius:6px;font-size:11px;color:var(--accent2)">\u{1F4AD} ${esc(data.next_question)}</span></div>`;
-    }
-    if(data.encouragement){
-      msgs.innerHTML+=`<div style="margin:2px 0;font-size:10px;color:var(--success)">\u{1F44D} ${esc(data.encouragement)}</div>`;
-    }
-  }catch(e){
-    const ld=document.getElementById(loadingId);
-    if(ld)ld.innerHTML=`<span style="color:var(--danger)">对话失败: ${esc(e.message)}</span>`;
-  }
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-// 初始化
-fetch('/api/health').then(r=>r.json()).then(d=>{
-  log(`后端: \u2705 ${d.status} \u00b7 ${d.agents?d.agents.length:0}个Agent就绪`,'success');
-}).catch(()=>{
-  log('\u26A0\uFE0F 后端未连接，请启动: uvicorn app:app','warn');
 });
 
-// === 学情可视化报告 ===
-async function generateReport(){
-  log('📊 生成学情可视化报告...','info');
-  try{
-    const res=await fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:getProfile()})});
-    if(!res.ok){log('报告生成失败: '+res.status,'error');return;}
-    const data=await res.json();
-    renderVisualReport(data);
-    log('✅ 学情报告生成完成','success');
-  }catch(e){
-    log('报告生成异常: '+e.message,'error');
+// ============================================================
+// 初始化
+// ============================================================
+fetch('/api/health').then(r=>r.json()).then(d=>{
+  const agentCount = (d.agents&&d.agents.length)||0;
+  log(`后端: ✅ ${d.status} · ${agentCount}个Agent就绪 · API Key ${d.api_key_configured?'已配置✅':'未配置⚠️'}`,'success');
+  document.getElementById('mAgents').textContent = '0/'+Math.max(agentCount,7);
+  if(currentApiKey){
+    document.getElementById('btnApiKey').textContent = '🔑 ' + currentApiKeyId + '•••';
+    log('🔑 已加载本地API Key','info');
+  } else {
+    log('⚠️ 未配置API Key，请点击右上角「API Key」配置','warn');
   }
-}
-
-function renderVisualReport(data){
-  const area=document.getElementById('resultsArea');
-  // Remove old report
-  const old=document.getElementById('visual-report');
-  if(old)old.remove();
-  
-  const s=data.summary||{};
-  const radar=data.radar_chart||{};
-  const curve=data.difficulty_curve||{};
-  const path=data.learning_path||{};
-  const halluc=data.hallucination_report||{};
-  
-  let radarHTML='';
-  if(radar.dimensions&&radar.dimensions.length){
-    radarHTML='<div class="report-item"><h5>🕸️ 知识能力雷达</h5>';
-    radar.dimensions.forEach(d=>{
-      const pct=Math.round(d.score*100);
-      radarHTML+=`<div class="score-bar"><span class="label" style="min-width:55px">${d.name}</span><div class="bar"><div class="fill" style="width:${pct}%;background:${pct>=70?'var(--success)':pct>=40?'var(--warn)':'var(--danger)'}"></div></div><span class="score-val">${pct}%</span></div>`;
-    });
-    if(radar.blind_spots&&radar.blind_spots.length){
-      radarHTML+=`<p style="font-size:10px;color:var(--danger);margin-top:4px">⚠️ 盲区: ${esc(radar.blind_spots.join('、'))}</p>`;
-    }
-    if(radar.strengths&&radar.strengths.length){
-      radarHTML+=`<p style="font-size:10px;color:var(--success);margin-top:2px">✅ 强项: ${esc(radar.strengths.join('、'))}</p>`;
-    }
-    radarHTML+='</div>';
-  }
-  
-  // Difficulty curve
-  let curveHTML='';
-  if(curve.data_points&&curve.data_points.length){
-    curveHTML='<div class="report-item"><h5>📈 难度匹配曲线</h5><div class="curve-bar">';
-    curve.data_points.forEach(d=>{
-      const h=Math.max(4,d.match_score*0.75);
-      const c=d.match_score>=70?'var(--success)':d.match_score>=40?'var(--warn)':'var(--danger)';
-      curveHTML+=`<div class="curve-col"><div class="curve-fill" style="height:${h}px;background:${c}"></div><div class="curve-val">${Math.round(d.match_score)}</div><div class="curve-label">${d.topic}</div></div>`;
-    });
-    curveHTML+=`</div><p style="font-size:10px;color:var(--muted);margin-top:4px">综合匹配度: ${curve.overall_match||'-'}%</p></div>`;
-  }
-  
-  // Learning path
-  let pathHTML='';
-  if(path.stages&&path.stages.length){
-    pathHTML='<div class="report-item" style="grid-column:1/-1"><h5>🗺️ 学习路径规划</h5><div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">';
-    path.stages.forEach((st,i)=>{
-      if(i>0)pathHTML+='<span class="path-connector">→</span>';
-      const cls=st.status==='done'?'done':st.status==='current'?'current':st.status==='next'?'next':'future';
-      const icon=st.status==='done'?'✅':st.status==='current'?'📍':st.status==='next'?'🔜':'⏳';
-      pathHTML+=`<div class="path-stage ${cls}">${icon} ${esc(st.title)}</div>`;
-    });
-    pathHTML+='</div>';
-    path.stages.forEach(st=>{
-      if(st.status==='current'){
-        pathHTML+=`<div style="font-size:11px;margin-top:6px;padding:6px;background:rgba(0,212,170,.06);border-radius:5px;border-left:3px solid var(--accent)">📌 当前: ${esc(st.desc||'')}</div>`;
-      }
-    });
-    pathHTML+='</div>';
-  }
-  
-  // Hallucination report
-  let hallucHTML='';
-  if(halluc.score!==undefined){
-    const level=halluc.level||'未知';
-    const levelColor=halluc.score<20?'var(--success)':halluc.score<50?'var(--warn)':'var(--danger)';
-    hallucHTML=`<div class="report-item"><h5>🛡️ 幻觉防控报告</h5>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div><span style="font-size:22px;font-weight:800;color:${levelColor}">${halluc.score}</span><span style="font-size:10px;color:var(--muted)">/100</span></div>
-        <div><span style="font-size:11px">风险等级: <strong style="color:${levelColor}">${esc(level)}</strong></span><br><span style="font-size:10px;color:var(--muted)">辩论${halluc.debate_rounds||1}轮 · ${halluc.issues_count||0}个问题 · ${esc(halluc.verdict||'')}</span></div>
-      </div>
-    </div>`;
-  }
-  
-  const report=document.createElement('div');
-  report.className='report-section';
-  report.id='visual-report';
-  report.innerHTML=`
-    <h4>📊 学情可视化报告 · ${esc(s.learner_level||'-')} · ${esc(s.focus_topic||'-')}</h4>
-    <div class="report-grid">
-      ${radarHTML}
-      ${hallucHTML}
-      ${curveHTML}
-      ${pathHTML}
-    </div>
-  `;
-  area.insertBefore(report,area.firstChild);
-  report.scrollIntoView({behavior:'smooth'});
-}
-
-// === Iteration actions ===
-async function applyIteration(decision){
-  log('🔄 应用迭代策略: '+decision,'info');
-  try{
-    const quizResult=agentResults.quiz||{};
-    const diagnosis=agentResults.diagnosis||{};
-    const knowledge=agentResults.knowledge_gen||{};
-    const res=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_result:quizResult,diagnosis,knowledge})});
-    const data=await res.json();
-    if(data.new_content){
-      agentResults.knowledge_gen=data.new_content;
-      renderCard('knowledge_gen',data.new_content);
-      log('✅ 知识内容已根据迭代策略更新','success');
-    } else {
-      log('⚠️ 迭代策略已应用，但未生成新内容','warn');
-    }
-  }catch(e){
-    log('迭代应用失败: '+e.message,'error');
-  }
-}
-
-async function reRunQuiz(){
-  log('📝 重新测试...','info');
-  setNode('quiz','running');
-  try{
-    const knowledge=agentResults.knowledge_gen||{};
-    const res=await fetch('/api/quiz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({knowledge,difficulty:getProfile().level})});
-    const data=await res.json();
-    agentResults.quiz=data;
-    setNode('quiz','done');
-    renderCard('quiz',data);
-    log('✅ 重新测试完成','success');
-  }catch(e){
-    log('重新测试失败: '+e.message,'error');
-    setNode('quiz','error');
-  }
-}
-
-async function forceAdvance(){
-  log('⏩ 强制进阶...','info');
-  const profile=getProfile();
-  profile.level=profile.level==='beginner'?'intermediate':'advanced';
-  document.getElementById('inpLvl').value=profile.level;
-  log('📊 水平已调整为: '+profile.level,'info');
-  // Re-run diagnosis
-  setNode('diagnosis','running');
-  try{
-    const res=await fetch('/api/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile})});
-    const data=await res.json();
-    agentResults.diagnosis=data;
-    setNode('diagnosis','done');
-    renderCard('diagnosis',data);
-    log('✅ 诊断已更新，继续生成新内容','success');
-  }catch(e){
-    log('强制进阶失败: '+e.message,'error');
-    setNode('diagnosis','error');
-  }
-}
-
-// === 访客统计埋点 ===
-;(function(){
-  function track(evt,extra){
-    const d={event:evt,page:{path:location.pathname,title:document.title,referrer:document.referrer},device:{type:/Mobi|Android|iPhone/i.test(navigator.userAgent)?'mobile':'desktop'}};
-    if(extra)Object.assign(d,extra);
-    if(navigator.sendBeacon){navigator.sendBeacon('/api/v1/analytics/track',new Blob([JSON.stringify(d)],{type:'application/json'}));}
-  }
-  track('pageview');
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')track('leave',{duration:Math.round(performance.now()/1000)});});
-})();
-
+}).catch(()=>{
+  log('⚠️ 后端未连接，请确认服务已启动','warn');
+});
 </script>
 </body>
 </html>
