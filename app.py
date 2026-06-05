@@ -215,10 +215,7 @@ async def index():
         return f.read()
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_page(request: Request):
-    if not _check_admin(request):
-        with open("static/admin_login.html", "r", encoding="utf-8") as f:
-            return f.read()
+async def admin_page():
     with open("static/admin.html", "r", encoding="utf-8") as f:
         return f.read()
 
@@ -710,6 +707,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # 访客统计路由
 if _HAS_ANALYTICS:
     app.include_router(analytics_router, prefix="/api/v1", tags=["访问统计"])
+
+@app.get("/robots.txt")
+async def robots():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/robots.txt", media_type="text/plain")
 
 if __name__ == "__main__":
     import uvicorn
