@@ -224,3 +224,69 @@ server {
 4. **API认证和限流**：JWT/OAuth2 + Rate Limiting
 5. **CORS配置**：不要用`allow_origins=["*"]`暴露所有源
 6. **敏感信息保护**：环境变量管理密钥，不硬编码
+
+## DOM操作 [教材]
+
+DOM（Document Object Model）是浏览器将HTML文档解析为树形结构的API接口。
+
+```javascript
+// 选择元素
+document.getElementById('app')
+document.querySelector('.btn-primary')
+document.querySelectorAll('li.item')
+
+// 操作内容
+element.textContent = '新文本'  // 纯文本(防XSS)
+element.innerHTML = '<b>HTML</b>'  // HTML(注意安全)
+
+// 事件监听
+element.addEventListener('click', (e) => {
+  console.log('clicked:', e.target)
+})
+
+// DOM修改
+const div = document.createElement('div')
+div.className = 'card'
+parent.appendChild(div)
+parent.removeChild(oldElement)
+```
+
+关键概念：事件冒泡与捕获、事件委托、虚拟DOM(React/Vue优化)、MutationObserver。
+
+## WebSocket实时通信 [官方]
+
+WebSocket提供全双工、持久化的客户端-服务器通信通道，适合实时场景。
+
+```javascript
+// 客户端
+const ws = new WebSocket('wss://example.com/ws')
+ws.onopen = () => ws.send(JSON.stringify({type: 'join', room: 'abc'}))
+ws.onmessage = (e) => console.log('收到:', JSON.parse(e.data))
+ws.onclose = () => console.log('连接关闭')
+
+// 服务端(Python FastAPI)
+from fastapi import WebSocket
+@app.websocket('/ws')
+async def ws_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_json()
+        await websocket.send_json({'echo': data})
+```
+
+WebSocket vs SSE：WebSocket双向通信适合聊天/协作，SSE单向推送适合通知/流式AI响应。
+
+## 性能优化 [实践]
+
+### 前端性能
+- **首屏加载**：代码分割(lazy loading)、预加载(preload/prefetch)、CDN加速
+- **渲染优化**：减少重排(reflow)、使用transform代替top/left、虚拟滚动长列表
+- **资源优化**：图片WebP/AVIF、CSS/JS压缩(tree-shaking)、Gzip/Brotli压缩
+- **缓存策略**：强缓存(Cache-Control max-age)、协商缓存(ETag/Last-Modified)
+- **Web Vitals指标**：LCP(<2.5s)、FID(<100ms)、CLS(<0.1)
+
+### 后端性能
+- **数据库优化**：索引、查询优化、连接池、读写分离
+- **API优化**：分页、字段过滤、批量接口、缓存(Redis)
+- **并发处理**：异步IO(asyncio/uvicorn)、消息队列(Celery/RabbitMQ)
+- **部署优化**：Nginx反向代理+负载均衡、Docker容器化、水平扩展
