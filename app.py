@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="2.3.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="3.0.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
@@ -230,7 +230,7 @@ async def health():
         "status": "ok" if has_api_key else "degraded",
         "agents": agents_list,
         "api_key_configured": has_api_key,
-        "version": "2.3.0",
+        "version": "3.0.0",
     }
 
 # ============================================================
@@ -405,7 +405,7 @@ async def admin_stats(request: Request):
     if not _check_admin(request):
         raise HTTPException(status_code=401, detail="未登录")
     return {
-        "version": "2.3.0",
+        "version": "3.0.0",
         "sessions": store.stats(),
         "agents": orchestrator.list_agents() if orchestrator else [],
         "api_key_configured": bool(os.environ.get("ZHIPUAI_API_KEY", "")),
