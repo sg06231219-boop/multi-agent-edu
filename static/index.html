@@ -141,6 +141,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',s
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('reviewer')">🔎 内容审核</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('practice_guide')">🔧 实操指南</button>
       <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('quiz')">📝 分阶测试</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('iteration')">🔄 迭代优化</button>
+      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('socratic')">💬 苏格拉底</button>
     </div>
   </div>
 </div>
@@ -642,9 +644,9 @@ function buildPrompts(agentName, context){
     {
       "type": "choice",
       "question": "题目内容",
-      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "options": ["选项1", "选项2", "选项3", "选项4"],
       "correct": 0,
-      "explanation": "详细解析"
+      "explanation": "详细解析（解释正确答案为什么对，其他选项为什么错）"
     }
   ],
   "total_score": 100,
@@ -671,20 +673,25 @@ function buildPrompts(agentName, context){
   }
   
   else if(agentName === 'socratic'){
-    system = `你是苏格拉底式导学专家，通过提问引导学习者主动思考。
+    system = `你是苏格拉底式导学专家，通过层层追问引导学习者主动思考，绝不直接给出答案。
 
-【要求】
-- 不要直接给答案，用问题引导
-- 问题要有层次：先简单再深入
-- 鼓励学习者表达自己的理解
+【导学策略】
+1. 第一层：用简单问题激活已有知识（"你还记得X是什么吗？"）
+2. 第二层：引导知识迁移（"如果A是这样的，那B会怎样？"）
+3. 第三层：挑战深层理解（"如果条件变了呢？" "为什么不是另一种情况？"）
+4. 每个问题都要有明确引导目的
+5. 语气亲切但专业，像导师而不是老师
 
 【输出JSON】
 {
-  "response": "对学习者说的引导性回复（中文，亲切专业）",
+  "response": "对学习者的引导性回复（中文，2-4句话，包含肯定+追问）",
   "questions": [
-    {"question": "引导问题", "purpose": "这个问题想引导学习者思考什么"}
+    {"question": "引导问题1（由浅入深）", "purpose": "这个问题想引导学习者思考什么"},
+    {"question": "引导问题2", "purpose": "..."},
+    {"question": "引导问题3", "purpose": "..."}
   ],
-  "hint": "如果学习者答不出，可以给的提示"
+  "hint": "如果学习者答不出，可以给的提示（不要直接给答案）",
+  "knowledge_bridge": "当前知识与目标知识之间的桥梁概念"
 }`;
     user = `知识内容：${(context.knowledge && context.knowledge.content || '').slice(0,1000)}\n请生成苏格拉底导学内容（JSON格式）：`;
   }
