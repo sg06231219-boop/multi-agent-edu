@@ -21,6 +21,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+# 访客统计模块
+try:
+    from analytics import router as analytics_router
+    _HAS_ANALYTICS = True
+except ImportError:
+    _HAS_ANALYTICS = False
+
 from agents.orchestrator import Orchestrator
 from agents.diagnosis import DiagnosisAgent
 from agents.knowledge_gen import KnowledgeGenAgent
@@ -651,34 +658,58 @@ def _calc_dimension_score(keyword: str, diagnosis: dict, default: float) -> floa
 @app.get("/api/test-data")
 async def get_test_data():
     """返回3组差异化学习者的完整输入输出示例"""
-    test_data_path = os.path.join(os.path.dirname(__file__), "data", "test_profiles.json")
-    if os.path.exists(test_data_path):
-        with open(test_data_path, "r", encoding="utf-8") as f:
-            profiles = json.load(f)
-    else:
-        profiles = []
+    base = os.path.dirname(os.path.abspath(__file__))
     
-    # 加载测试结果
-    test_result_path = os.path.join(os.path.dirname(__file__), "data", "test_result.json")
+    # 加载测试画像（兼容dict和list格式）
+    test_data_path = os.path.join(base, "data", "test_profiles.json")
+    profiles = []
+    if os.path.exists(test_data_path):
+        try:
+            with open(test_data_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            if isinstance(raw, list):
+                profiles = raw
+            elif isinstance(raw, dict):
+                # 兼容 {"test_profiles": [...]} 结构
+                profiles = raw.get("test_profiles", raw.get("profiles", []))
+        except Exception:
+            pass
+    
+    # 加载测试结果（兼容dict和list格式）
+    test_result_path = os.path.join(base, "data", "test_result.json")
+    results = []
     if os.path.exists(test_result_path):
-        with open(test_result_path, "r", encoding="utf-8") as f:
-            results = json.load(f)
-    else:
-        results = []
+        try:
+            with open(test_result_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            if isinstance(raw, list):
+                results = raw
+            elif isinstance(raw, dict):
+                results = [raw]  # 单个结果包装成列表
+        except Exception:
+            pass
+    
+    # 加载知识库文件列表
+    kb_dir = os.path.join(base, "knowledge_base")
+    kb_files = []
+    if os.path.isdir(kb_dir):
+        kb_files = [{"name": f, "path": f"knowledge_base/{f}"}
+                     for f in os.listdir(kb_dir) if f.endswith(".md")]
     
     return {
         "description": "XH-202630赛题测试数据：3组差异化学习者输入输出示例",
-        "profiles": profiles[:3],  # 至少3组
+        "profiles": profiles[:3],
         "sample_results": results[:3],
-        "knowledge_base_files": [
-            {"name": f, "path": f"knowledge_base/{f}"}
-            for f in os.listdir(os.path.join(os.path.dirname(__file__), "knowledge_base"))
-            if f.endswith(".md")
-        ]
+        "knowledge_base_files": kb_files,
+        "evaluation_report": None  # 可扩展
     }
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 访客统计路由
+if _HAS_ANALYTICS:
+    app.include_router(analytics_router, prefix="/api/v1", tags=["访问统计"])
 
 if __name__ == "__main__":
     import uvicorn
