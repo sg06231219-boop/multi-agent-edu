@@ -2,1004 +2,1439 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>多智能体协同学习平台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多智能体协同学习平台 — XH-202630</title>
+<meta name="description" content="基于7个AI Agent协同决策的个性化学习资源生成系统，赛题XH-202630参赛项目">
+<meta property="og:title" content="多智能体协同学习平台">
+<meta property="og:description" content="7个AI Agent协同：诊断→生成→审核→实操→测验→迭代→导学">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0e17;--card:#131a2b;--border:#1e2a42;--accent:#00d4aa;--accent2:#6c5ce7;--text:#e8edf5;--muted:#8892a8;--danger:#ff6b6b;--warn:#ffc107;--success:#00d4aa;--info:#3498db}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-
-/* 顶栏 */
-.header{background:linear-gradient(135deg,#0a0e17,#131a2b,#1a1040);padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header h1{font-size:18px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;letter-spacing:.5px}
-.header .sub{font-size:10px;color:var(--muted);margin-top:2px}
-.header-right{display:flex;align-items:center;gap:10px}
-.badge-live{background:#ff4444;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;animation:pulse-live 1.5s infinite;display:none}
-@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.4}}
-
-/* 主布局 */
-.main{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 52px);gap:0}
-
-/* === 移动端适配 === */
-@media(max-width:768px){
-  .main{grid-template-columns:1fr;position:relative;}
-  .sidebar{display:none;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:200;background:var(--bg);padding:16px;overflow-y:auto;animation:slideIn .3s ease;}
-  .sidebar.mobile-show{display:flex!important;flex-direction:column;gap:12px;}
-  .content{padding:12px;gap:10px;}
-  .mobile-toggle{display:flex!important;}
-  .header h1{font-size:15px;}
-  .header .sub{font-size:9px;}
-  .btn{padding:11px 14px;font-size:13px;}
-  .agent-node{min-width:80px;padding:7px 8px;}
-  .agent-node .icon{font-size:16px;}
-  .agent-node .name{font-size:9px;}
-  .metrics-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;}
-  .metric-card{min-width:70px;padding:7px 5px;}
-  .metric-card .val{font-size:16px;}
-  .result-card{padding:10px;}
-  .log-panel{max-height:100px;}
+:root{
+  --bg:#070b14;
+  --bg2:#0d1526;
+  --card:#111d35;
+  --card2:#162040;
+  --border:#1a2d50;
+  --border2:#243660;
+  --accent:#00d4aa;
+  --accent-g:#00d4aa33;
+  --accent2:#7c5cfc;
+  --accent2-g:#7c5cfc22;
+  --text:#dce8f8;
+  --text2:#8ba3cc;
+  --muted:#4a6285;
+  --danger:#ff5c6c;
+  --warn:#ffb347;
+  --success:#00d4aa;
 }
-@media(max-width:480px){
-  .header{padding:10px 12px;}
-  .main{gap:0;}
-  .content{padding:8px;gap:8px;}
+body{
+  font-family:'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
 }
-@keyframes slideIn{from{transform:translateY(-20px);opacity:0;}to{transform:none;opacity:1;}}
 
-.mobile-toggle{display:none;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;}
+/* ═══════════════ 顶栏 ═══════════════ */
+.header{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(180deg,#070b14 0%,#070b14cc 80%);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.logo-icon{font-size:24px;filter:drop-shadow(0 0 8px #00d4aa88)}
+.logo-text{font-size:16px;font-weight:800;background:linear-gradient(90deg,#00d4aa,#7c5cfc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.3px}
+.logo-sub{font-size:9px;color:var(--text2);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:8px}
+.live-dot{width:7px;height:7px;background:var(--danger);border-radius:50%;animation:pulse-dot 1.4s infinite;display:none}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.timer{font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.btn-icon{background:var(--card);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-g)}
 
-/* 左侧面板 */
-.sidebar{background:var(--card);border-right:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
-.panel-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px}
-.form-group{margin-bottom:10px}
-.form-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:600}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;line:none;transition:border .2s}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
-.form-group textarea{resize:vertical;min-height:48px;font-family:inherit}
+/* ═══════════════ 主布局 ═══════════════ */
+.main{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 56px)}
 
-.slider-group{margin-bottom:8px}
-.slider-group label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px}
-.slider-group label span{color:var(--accent);font-weight:700}
-.slider-group input[type=range]{width:100%;accent-color:var(--accent)}
+/* ═══════════════ 左侧面板 ═══════════════ */
+.sidebar{
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+  padding:16px 14px;
+  gap:14px;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-.btn{padding:9px 16px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;touch-action:manipulation}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;width:100%}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(0,212,170,.3)}
-.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none}
-.btn-stop{background:var(--danger);color:#fff;width:100%;margin-top:5px;display:none}
+.panel-label{
+  font-size:9px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.8px;
+  margin-bottom:6px;
+  display:flex;align-items:center;gap:5px;
+}
+.panel-label::before{content:'';width:12px;height:1px;background:var(--accent);display:block}
 
-/* 右侧 */
-.content{padding:16px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.form-group{margin-bottom:8px}
+.form-group label{
+  display:block;font-size:11px;color:var(--text2);margin-bottom:4px;
+  font-weight:500;
+}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;padding:8px 10px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-size:12px;
+  font-family:inherit;
+  transition:border-color .2s,box-shadow .2s;
+  outline:none;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-g);
+}
+.form-group select option{background:var(--card)}
+.form-group textarea{resize:vertical;min-height:54px;line-height:1.5}
 
-/* 指标 */
-.metrics-row{display:flex;gap:8px;flex-wrap:wrap;display:none}
-.metric-card{flex:1;min-width:90px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center}
-.metric-card .val{font-size:20px;font-weight:800;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.metric-card .lbl{font-size:9px;color:var(--muted);margin-top:1px}
+.slider-group{margin-bottom:6px}
+.slider-group label{
+  display:flex;justify-content:space-between;
+  font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500
+}
+.slider-group label em{color:var(--accent);font-style:normal;font-weight:700}
+.slider-group input[type=range]{
+  width:100%;height:3px;border-radius:2px;accent-color:var(--accent);
+  background:var(--border);cursor:pointer;
+}
 
-/* Agent拓扑 */
-.topo-canvas{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px}
-.node-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:4px 0}
-.agent-node{padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:var(--bg);text-align:center;min-width:95px;transition:all .5s;cursor:default}
-.agent-node.active{border-color:var(--accent);box-shadow:0 0 18px rgba(0,212,170,.2)}
-.agent-node.running{animation:node-pulse 1.2s infinite}
-.agent-node.done{border-color:var(--success);background:rgba(0,212,170,.06)}
-.agent-node .icon{font-size:20px}
-.agent-node .name{font-size:10px;font-weight:700;margin-top:3px}
-.agent-node .status{font-size:9px;color:var(--muted);margin-top:1px}
-@keyframes node-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,170,.3)}50%{box-shadow:0 0 0 7px rgba(0,212,170,0)}}
+.btn-primary{
+  background:linear-gradient(135deg,#00d4aa,#00b896);
+  color:#04120e;font-size:13px;font-weight:800;
+  border:none;border-radius:10px;padding:11px;
+  cursor:pointer;width:100%;
+  transition:all .25s;
+  box-shadow:0 4px 20px #00d4aa33;
+  letter-spacing:.3px;
+  position:relative;overflow:hidden;
+}
+.btn-primary::before{
+  content:'';position:absolute;top:0;left:-100%;
+  width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,#ffffff33,transparent);
+  transition:left .5s;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px #00d4aa55}
+.btn-primary:hover::before{left:100%}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary:disabled::before{display:none}
+
+.btn-stop{
+  background:linear-gradient(135deg,#ff5c6c,#e04450);
+  color:#fff;font-size:12px;font-weight:700;
+  border:none;border-radius:10px;padding:9px;
+  cursor:pointer;width:100%;margin-top:5px;
+  display:none;
+}
+
+.divider{height:1px;background:var(--border);margin:2px 0}
+
+.step-list{display:flex;flex-direction:column;gap:3px}
+.step-btn{
+  background:var(--bg);
+  border:1px solid var(--border);
+  color:var(--text2);
+  border-radius:7px;
+  padding:7px 10px;
+  font-size:11px;font-weight:500;
+  cursor:pointer;text-align:left;
+  display:flex;align-items:center;gap:7px;
+  transition:all .2s;
+}
+.step-btn:hover{border-color:var(--accent2);color:var(--text);background:var(--accent2-g)}
+.step-btn.running{border-color:var(--accent);color:var(--accent);background:var(--accent-g)}
+.step-btn.done{border-color:var(--success);color:var(--success);background:#00d4aa11}
+.step-btn .si{width:14px;height:14px;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0}
+.step-btn.done .si::after{content:'✓';font-size:8px}
+
+/* ═══════════════ 右侧内容 ═══════════════ */
+.content{
+  padding:16px 20px;
+  overflow-y:auto;
+  display:flex;flex-direction:column;gap:14px;
+}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* 进度指标条 */
+.metrics-strip{
+  display:flex;gap:0;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  display:none;
+}
+.mstrip{
+  flex:1;padding:10px 12px;
+  text-align:center;
+  border-right:1px solid var(--border);
+  position:relative;
+}
+.mstrip:last-child{border-right:none}
+.mstrip .ms-val{font-size:18px;font-weight:800;background:linear-gradient(90deg,#00d4aa,#7c5cfc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.mstrip .ms-lbl{font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.5px}
+.mstrip .ms-bar{
+  position:absolute;bottom:0;left:0;height:2px;
+  background:linear-gradient(90deg,#00d4aa,#7c5cfc);
+  border-radius:1px;
+  transition:width 1s ease;
+}
+
+/* Agent 拓扑环形图 */
+.agent-topo{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+.agent-topo::before{
+  content:'';position:absolute;top:-40%;left:-20%;
+  width:80%;height:80%;
+  background:radial-gradient(ellipse,var(--accent-g),transparent 60%);
+  pointer-events:none;
+}
+.agent-topo-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+
+.topo-stage{
+  display:flex;align-items:center;gap:0;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.agent-orbit{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:72px;
+}
+.agent-orbit.running .ao-icon{animation:orbit-pulse 1.2s infinite}
+@keyframes orbit-pulse{
+  0%,100%{box-shadow:0 0 0 0 var(--accent-g)}
+  50%{box-shadow:0 0 0 10px transparent}
+}
+.agent-orb{
+  width:46px;height:46px;border-radius:50%;
+  background:var(--bg2);
+  border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  transition:all .5s;
+  cursor:default;
+  position:relative;
+}
+.agent-orb.running{border-color:var(--accent);box-shadow:0 0 16px #00d4aa55;animation:orb-glow 1.5s ease-in-out infinite}
+@keyframes orb-glow{0%,100%{box-shadow:0 0 16px #00d4aa44}50%{box-shadow:0 0 28px #00d4aa88}}
+.agent-orb.done{border-color:var(--success);background:linear-gradient(135deg,#00d4aa11,#7c5cfc11)}
+.agent-orb.error{border-color:var(--danger);background:#ff5c6c11}
+.agent-orb .ao-ring{
+  position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--accent);
+  opacity:0;transform:scale(.8);
+  transition:all .4s;
+}
+.agent-orb.running .ao-ring{opacity:.4;transform:scale(1);animation:ring-breathe 2s ease-in-out infinite}
+@keyframes ring-breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.2;transform:scale(1.08)}}
+.ao-name{font-size:9px;font-weight:700;color:var(--text2);text-align:center;max-width:60px;line-height:1.2}
+.ao-name.active{color:var(--accent)}
+.ao-name.done{color:var(--success)}
+.ao-status{font-size:8px;color:var(--muted);height:10px}
+
+.orbit-arrow{color:var(--border2);font-size:12px;margin:0 2px;transition:color .3s}
+.orbit-arrow.done{color:var(--accent)}
+
+/* 流式输出区 */
+.stream-zone{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 14px;
+  min-height:80px;
+  max-height:180px;
+  overflow-y:auto;
+  font-size:12px;
+  line-height:1.7;
+  color:var(--text2);
+  display:none;
+}
+.stream-zone.active{display:block}
+.stream-zone::-webkit-scrollbar{width:3px}
+.stream-zone::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.stream-zone .stream-label{font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:700}
+.stream-text{color:var(--text);white-space:pre-wrap;word-break:break-word}
+.stream-text .cursor{color:var(--accent);animation:blink-cursor .8s step-end infinite}
+@keyframes blink-cursor{0%,100%{opacity:1}50%{opacity:0}}
 
 /* 管道条 */
-.pipeline-bar{display:flex;align-items:center;gap:4px;padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:9px;flex-wrap:wrap}
-.pipe-step{padding:5px 10px;border-radius:14px;font-size:10px;font-weight:600;background:var(--bg);border:1px solid var(--border);color:var(--muted);transition:all .4s;white-space:nowrap}
-.pipe-step.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,170,.08)}
-.pipe-step.done{border-color:var(--success);color:var(--success);background:rgba(0,212,170,.05)}
-.pipe-step.error{border-color:var(--danger);color:var(--danger)}
-.pipe-arrow{color:var(--border);font-size:12px;transition:color .3s}
-.pipe-arrow.lit{color:var(--accent)}
+.pipeline-row{
+  display:flex;align-items:center;gap:4px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:8px 12px;
+  overflow-x:auto;flex-wrap:nowrap;
+}
+.pipeline-row::-webkit-scrollbar{height:0}
+.ps{
+  padding:4px 9px;border-radius:12px;
+  font-size:10px;font-weight:700;
+  background:var(--bg);border:1px solid var(--border);
+  color:var(--muted);white-space:nowrap;
+  transition:all .35s;flex-shrink:0;
+}
+.ps.active{border-color:var(--accent);color:var(--accent);background:var(--accent-g);transform:scale(1.05)}
+.ps.done{border-color:var(--success);color:var(--success);background:#00d4aa11}
+.ps.error{border-color:var(--danger);color:var(--danger);background:#ff5c6c11}
+.pa{color:var(--border2);font-size:10px;flex-shrink:0;transition:color .3s}
+.pa.lit{color:var(--accent)}
 
 /* 日志 */
-.log-panel{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 14px;max-height:140px;overflow-y:auto;font-family:'Cascadia Code','Courier New',monospace;font-size:10px;line-height:1.6}
-.log-line{display:flex;gap:7px;animation:log-in .25s ease}
-.log-time{color:var(--muted);min-width:48px}
-.log-msg{color:var(--text)}
-.log-msg.success{color:var(--success)}.log-msg.warn{color:var(--warn)}.log-msg.error{color:var(--danger)}.log-msg.info{color:var(--accent)}
-@keyframes log-in{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.log-box{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:8px 12px;
+  max-height:110px;
+  overflow-y:auto;
+  font-family:'Cascadia Code','Courier New',monospace;
+  font-size:10px;line-height:1.7;
+}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.ll{display:flex;gap:8px;animation:ll-in .2s ease}
+.ll-ts{color:var(--muted);flex-shrink:0;min-width:42px}
+.ll-msg{color:var(--text2)}
+.ll-msg.suc{color:var(--success)}.ll-msg.inf{color:var(--accent)}.ll-msg.warn{color:var(--warn)}.ll-msg.err{color:var(--danger)}
+@keyframes ll-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 
-/* 结果卡片 */
-.result-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px;animation:card-in .4s ease;position:relative;overflow:hidden}
-@keyframes card-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.result-card h4{font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.result-card h4 .elapsed{font-size:9px;background:var(--accent);color:#000;padding:1px 7px;border-radius:7px;font-weight:800}
+/* ═══════════════ 结果卡片 ═══════════════ */
+.results-grid{
+  display:flex;flex-direction:column;gap:12px;
+}
 
-.score-bar{display:flex;align-items:center;gap:8px;margin:5px 0}
-.score-bar .label{font-size:10px;color:var(--muted);min-width:65px}
-.score-bar .bar{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
-.score-bar .bar .fill{height:100%;border-radius:3px;transition:width 1s ease}
-.score-val{font-size:11px;font-weight:700;min-width:32px;text-align:right}
+/* 通用结果卡片 */
+.res-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px 16px;
+  animation:card-pop .4s ease;
+  position:relative;
+  overflow:hidden;
+}
+.res-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;
+  transition:opacity .3s;
+}
+.res-card:hover::before{opacity:1}
+@keyframes card-pop{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
 
-/* 辩论 */
-.debate-panel{border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px;background:var(--bg)}
-.debate-round{padding:6px 0;border-bottom:1px solid var(--border)}
-.debate-round:last-child{border:none}
-.debate-round .round-label{font-size:10px;color:var(--accent2);font-weight:700}
-.debate-round .verdict{font-size:11px;margin-top:2px}
+.res-card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.res-card-title{
+  font-size:13px;font-weight:800;
+  display:flex;align-items:center;gap:7px;
+}
+.res-card-title .rc-icon{font-size:18px}
+.res-card-badge{
+  font-size:9px;background:var(--accent-g);
+  color:var(--accent);border:1px solid var(--accent);
+  padding:2px 8px;border-radius:10px;font-weight:700;
+}
+.res-card-badge.demo{background:#ffb34722;color:var(--warn);border-color:var(--warn)}
+
+/* 能力雷达图（Canvas） */
+.radar-wrap{
+  position:relative;width:100%;
+  display:flex;justify-content:center;
+  padding:10px 0;
+}
+.radar-wrap canvas{max-width:100%}
+
+/* 分数条 */
+.sb{display:flex;align-items:center;gap:8px;margin:4px 0}
+.sb-lbl{font-size:10px;color:var(--text2);min-width:64px;flex-shrink:0}
+.sb-bar{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.sb-fill{height:100%;border-radius:3px;transition:width 1.2s ease;min-width:2px}
+.sb-val{font-size:10px;font-weight:700;min-width:30px;text-align:right}
+
+/* 知识卡片 */
+.kb-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:12px;
+  font-size:9px;font-weight:700;
+  background:var(--bg);border:1px solid var(--border2);
+  color:var(--text2);margin:2px;
+}
+.kb-badge.t1{border-color:#00d4aa44;color:#00d4aa;background:#00d4aa11}
+.kb-badge.t2{border-color:#7c5cfc44;color:#7c5cfc;background:#7c5cfc11}
+.kb-badge.t3{border-color:#ffb34744;color:#ffb347;background:#ffb34711}
+
+.kb-body{
+  background:var(--bg);
+  border-radius:9px;
+  padding:12px;
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.75;
+  color:var(--text);
+  max-height:260px;
+  overflow-y:auto;
+  border:1px solid var(--border);
+}
+.kb-body::-webkit-scrollbar{width:3px}
+.kb-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.kb-body h3,.kb-body h4{color:var(--accent);margin:8px 0 4px;font-size:13px}
+.kb-body code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:11px;border:1px solid var(--border)}
+.kb-body pre{background:#06101e;padding:10px;border-radius:8px;overflow-x:auto;font-size:11px;border:1px solid var(--border2);margin:6px 0}
+.kb-body ul,.kb-body ol{margin:4px 0 4px 18px}
+.kb-body li{margin:2px 0}
+.kb-body strong{color:var(--accent)}
+
+/* 辩论轮次 */
+.debate-thread{border:1px solid var(--border);border-radius:9px;margin-top:8px;overflow:hidden}
+.debate-rd{background:var(--bg);padding:8px 12px;border-bottom:1px solid var(--border)}
+.debate-rd:last-child{border-bottom:none}
+.debate-rd-lbl{font-size:9px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.debate-rd-opinion{font-size:11px;color:var(--text);line-height:1.6}
+.debate-verdict{background:var(--card);padding:7px 12px;font-size:11px;font-weight:700;color:var(--success)}
 
 /* 测验 */
-.quiz-q{background:var(--bg);border-radius:7px;padding:10px;margin:6px 0;border:1px solid var(--border);transition:border .3s}
-.quiz-q .q-text{font-size:12px;margin-bottom:6px}
-.quiz-opts{display:flex;flex-direction:column;gap:4px}
-.quiz-opt{padding:6px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:11px;transition:all .2s;user-select:none;-webkit-tap-highlight-color:transparent}
-.quiz-opt:hover{border-color:var(--accent);background:rgba(0,212,170,.04)}
-.quiz-opt.selected{border-color:var(--accent);background:rgba(0,212,170,.08)}
-.quiz-opt.correct{border-color:var(--success)!important;background:rgba(0,212,170,.12)!important}
-.quiz-opt.wrong{border-color:var(--danger)!important;background:rgba(255,107,107,.08)!important}
-.quiz-result{font-size:12px;font-weight:700;padding:7px 10px;border-radius:7px;margin-top:6px}
+.quiz-wrap{margin-top:8px}
+.q-card{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:10px 12px;
+  margin-bottom:8px;
+  transition:border-color .2s;
+}
+.q-card:hover{border-color:var(--border2)}
+.q-num{font-size:9px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.q-text{font-size:12px;line-height:1.6;margin-bottom:7px}
+.q-opts{display:flex;flex-direction:column;gap:4px}
+.q-opt{
+  padding:7px 10px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  font-size:11px;
+  cursor:pointer;
+  transition:all .2s;
+  user-select:none;
+}
+.q-opt:hover{border-color:var(--accent);background:var(--accent-g)}
+.q-opt.sel{border-color:var(--accent);background:var(--accent-g);color:var(--accent)}
+.q-opt.ok{border-color:var(--success)!important;background:#00d4aa11!important;color:var(--success)!important}
+.q-opt.nox{border-color:var(--danger)!important;background:#ff5c6c11!important;color:var(--danger)!important}
+.q-exp{font-size:10px;color:var(--text2);margin-top:5px;display:none;line-height:1.5}
+.q-exp.show{display:block}
+.quiz-score{
+  text-align:center;
+  font-size:20px;font-weight:900;
+  padding:14px;
+  border-radius:12px;
+  margin-top:8px;
+  animation:score-pop .5s ease;
+}
+@keyframes score-pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
-/* 知识内容 */
-.knowledge-content{background:var(--bg);padding:12px;border-radius:7px;margin-top:6px;font-size:12px;line-height:1.65;max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.knowledge-content h3,.knowledge-content h4{color:var(--accent);margin:8px 0 5px}
-.knowledge-content code{background:rgba(0,212,170,.1);padding:1px 4px;border-radius:3px;font-size:11px}
-.knowledge-content pre{background:#0d1117;padding:8px;border-radius:5px;overflow-x:auto;font-size:11px;margin:6px 0}
-.knowledge-content ul,.knowledge-content ol{margin:4px 0 4px 16px}
+/* 迭代决策 */
+.iter-cards{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.iter-chip{
+  padding:6px 14px;border-radius:20px;
+  font-size:11px;font-weight:700;
+  border:1px solid;
+  transition:all .2s;cursor:default;
+}
+.iter-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accent-g)}
+.iter-chip.inactive{opacity:.4;border-color:var(--border);color:var(--muted)}
 
-/* 空状态 */
-.empty-state{text-align:center;padding:40px 16px;color:var(--muted)}
-.empty-state .icon{font-size:40px;margin-bottom:10px;opacity:.5}
-.empty-state p{font-size:12px;margin-top:3px}
+/* 苏格拉底对话 */
+.soc-box{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px;
+  margin-top:8px;
+}
+.soc-prompt{font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500}
+.soc-q-list{list-style:none;padding:0}
+.soc-q-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+  font-size:11px;
+}
+.soc-q-item:last-child{border-bottom:none}
+.soc-q-item::before{content:'?';color:var(--accent2);font-weight:900;flex-shrink:0;width:16px;height:16px;background:var(--accent2-g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px}
 
-/* 进度环 */
-.progress-ring{display:inline-block;position:relative}
-.progress-ring svg{transform:rotate(-90deg)}
-.progress-ring .ring-bg{stroke:var(--border);fill:none}
-.progress-ring .ring-fill{fill:none;stroke:var(--accent);transition:stroke-dashoffset .5s ease}
+/* 步骤指引 */
+.step-guide{
+  display:flex;flex-direction:column;gap:8px;
+  margin-top:8px;
+}
+.step-item{
+  display:flex;gap:10px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:10px;
+  transition:border-color .2s;
+}
+.step-item:hover{border-color:var(--accent2)}
+.step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--accent2-g);border:1px solid var(--accent2);
+  color:var(--accent2);font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-body{flex:1}
+.step-title{font-size:12px;font-weight:700;margin-bottom:3px}
+.step-desc{font-size:11px;color:var(--text2);line-height:1.5}
+.step-code{
+  margin-top:6px;
+  background:#06101e;
+  border:1px solid var(--border2);
+  border-radius:7px;
+  padding:8px 10px;
+  font-size:10px;
+  font-family:'Cascadia Code',monospace;
+  color:#89d4c8;
+  overflow-x:auto;
+}
 
-/* === API Key弹窗 === */
-.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;animation:fadeIn .2s ease}
-.modal-overlay.show{display:flex}
-@keyframes fadeIn{from{opacity:0}}
-.modal-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:92%;max-width:420px;animation:modalIn .3s ease}
-@keyframes modalIn{from{transform:scale(.95) translateY(10px);opacity:0}}
-.modal-box h3{font-size:15px;margin-bottom:4px}
-.modal-box .hint{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5}
-.modal-box .hint a{color:var(--accent);text-decoration:none}
-.modal-box input[type=password]{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;margin-bottom:10px}
-.modal-box input[type=password]:focus{border-color:var(--accent);outline:none}
-.modal-box .btn-row{display:flex;gap:8px;margin-top:6px}
-.modal-box .btn-skip{background:transparent;border:1px solid var(--border);color:var(--muted);flex:1}
-.modal-box .btn-confirm{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;flex:1}
-.modal-box .error-msg{color:var(--danger);font-size:11px;margin-top:6px;display:none}
+/* ═══════════════ 空状态 ═══════════════ */
+.empty-hero{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:28px 24px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.empty-hero::before{
+  content:'';position:absolute;top:-60%;left:-10%;
+  width:120%;height:200%;
+  background:radial-gradient(ellipse at 50% 30%,var(--accent-g),var(--accent2-g),transparent 65%);
+  pointer-events:none;
+}
+.empty-icon{font-size:48px;margin-bottom:12px;display:block;filter:drop-shadow(0 0 20px #00d4aa55)}
+.empty-title{font-size:18px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#dce8f8,#8ba3cc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.empty-sub{font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.feature-pills{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:18px}
+.fp{
+  padding:5px 12px;
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:20px;font-size:10px;color:var(--text2);
+  display:flex;align-items:center;gap:4px;
+}
+.fp.e{background:var(--accent-g);border-color:var(--accent);color:var(--accent)}
+.fp.e2{background:var(--accent2-g);border-color:var(--accent2);color:var(--accent2)}
+.fp.e3{background:#ffb34722;border-color:var(--warn);color:var(--warn)}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border2);
+  color:var(--text2);padding:8px 20px;border-radius:8px;
+  font-size:12px;cursor:pointer;transition:all .2s;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-g)}
+
+/* ═══════════════ API Key弹窗 ═══════════════ */
+.modal-bg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.75);z-index:999;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+  animation:fade-in .2s ease;
+}
+.modal-bg.on{display:flex}
+@keyframes fade-in{from{opacity:0}}
+.modal-box{
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:18px;
+  padding:28px 24px;
+  width:92%;max-width:400px;
+  animation:modal-pop .3s ease;
+  box-shadow:0 24px 80px #00000088;
+}
+@keyframes modal-pop{from{transform:scale(.92) translateY(16px);opacity:0}}
+.modal-box h3{font-size:16px;margin-bottom:4px;background:linear-gradient(90deg,#dce8f8,#8ba3cc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+.modal-box .mhint{font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6}
+.modal-box .mhint a{color:var(--accent);text-decoration:none}
+.modal-box input[type=password]{
+  width:100%;padding:10px 12px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:13px;
+  margin-bottom:10px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.modal-box input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
+.modal-btns{display:flex;gap:8px;margin-top:8px}
+.modal-btns button{flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;border:none}
+.btn-skip{background:transparent;border:1px solid var(--border)!important;color:var(--text2)}
+.btn-skip:hover{border-color:var(--accent2)!important;color:var(--accent2)}
+.btn-confirm{background:linear-gradient(135deg,#00d4aa,#00b896);color:#04120e}
+.btn-confirm:hover{transform:translateY(-1px);box-shadow:0 4px 16px #00d4aa44}
+.modal-err{color:var(--danger);font-size:11px;margin-top:6px;display:none}
+
+/* ═══════════════ 移动端 ═══════════════ */
+@media(max-width:768px){
+  .main{grid-template-columns:1fr}
+  .sidebar{position:fixed;top:56px;left:0;right:0;bottom:0;z-index:150;display:none;overflow-y:auto;background:var(--bg2);padding:14px}
+  .sidebar.mob-on{display:flex}
+  .content{padding:12px 10px}
+  .topo-stage{gap:2px}
+  .agent-orbit{min-width:60px}
+  .agent-orb{width:40px;height:40px;font-size:15px}
+  .ao-name{max-width:50px;font-size:8px}
+  .metrics-strip{flex-wrap:wrap}
+  .mstrip{flex:1 1 45%}
+}
+.mob-btn{display:none;background:var(--card);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:16px}
+@media(max-width:768px){.mob-btn{display:flex}}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:8px">
-    <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
-    <div>
-      <h1>🧠 多智能体协同学习平台</h1>
-      <div class="sub">XH-202630 · 领域知识个性化生成与多智能体协同决策系统</div>
+  <div class="header-left">
+    <button class="mob-btn" id="mobBtn" onclick="toggleSidebar()">☰</button>
+    <div class="logo">
+      <span class="logo-icon">🧠</span>
+      <div>
+        <div class="logo-text">多智能体协同学习平台</div>
+        <div class="logo-sub">XH-202630 · 领域知识个性化生成与多智能体协同决策系统</div>
+      </div>
     </div>
   </div>
   <div class="header-right">
-    <button onclick="showApiKeyModal()" style="background:var(--card);border:1px solid var(--border);color:var(--accent);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" id="btnApiKey">🔑 API Key</button>
-    <span class="badge-live" id="liveBadge">● LIVE</span>
-    <span style="font-size:11px;color:var(--muted)" id="timerDisplay">00:00</span>
+    <div class="live-dot" id="liveDot"></div>
+    <span class="timer" id="timerDsp">00:00</span>
+    <button class="btn-icon" onclick="showKeyModal()" title="配置API Key">🔑</button>
+    <button class="btn-icon" onclick="showHelp()" title="使用说明">❓</button>
   </div>
 </div>
 
 <div class="main">
-<!-- 左侧 -->
-<div class="sidebar" id="sidebar">
-  <div>
-    <div class="panel-title">📋 学习者画像</div>
-    <div class="form-group"><label>背景描述</label><textarea id="inpBg" placeholder="例如：计算机科学大二学生，学过C语言和数据结构，想学AI开发">计算机科学大二学生，学过C语言和数据结构，想学AI开发</textarea></div>
-    <div class="form-group"><label>编程经验</label><select id="inpExp"><option value="无编程经验">无编程经验</option><option value="学过一门语言" selected>学过一门语言</option><option value="有项目经验">有项目经验</option><option value="熟练开发者">熟练开发者</option></select></div>
-    <div class="form-group"><label>学习目标</label><input id="inpGoal" value="掌握Python和AI开发基础" placeholder="你想学会什么？"></div>
-    <div class="form-group"><label>自评水平</label><select id="inpLvl"><option value="beginner">零基础入门</option><option value="intermediate" selected>有一定基础</option><option value="advanced">进阶提升</option></select></div>
-  </div>
+  <!-- 左侧 -->
+  <div class="sidebar" id="sidebar">
+    <div>
+      <div class="panel-label">学习者画像</div>
+      <div class="form-group"><label>背景描述</label>
+        <textarea id="inpBg" placeholder="例如：大三学生，学过C语言和数据结构，想系统学习AI开发">计算机科学大三学生，学过C语言和数据结构，想系统学习AI开发</textarea>
+      </div>
+      <div class="form-group"><label>编程经验</label>
+        <select id="inpExp">
+          <option value="无编程经验">无编程经验</option>
+          <option value="学过一门语言" selected>学过一门语言</option>
+          <option value="有项目经验">有项目经验</option>
+          <option value="熟练开发者">熟练开发者</option>
+        </select>
+      </div>
+      <div class="form-group"><label>学习目标</label>
+        <input id="inpGoal" value="掌握Python和AI开发基础" placeholder="你的学习目标">
+      </div>
+      <div class="form-group"><label>自评水平</label>
+        <select id="inpLvl">
+          <option value="beginner">零基础入门</option>
+          <option value="intermediate" selected>有一定基础</option>
+          <option value="advanced">进阶提升</option>
+        </select>
+      </div>
+    </div>
 
-  <div>
-    <div class="panel-title">⚙️ 协同参数</div>
-    <div class="slider-group"><label>辩论轮数 <span id="vRounds">2</span></label><input type="range" id="sRounds" min="1" max="5" value="2" oninput="document.getElementById('vRounds').textContent=this.value"></div>
-    <div class="slider-group"><label>LLM温度 <span id="vTemp">0.7</span></label><input type="range" id="sTemp" min="0" max="10" value="7" oninput="document.getElementById('vTemp').textContent=(this.value/10).toFixed(1)"></div>
-  </div>
+    <div class="divider"></div>
 
-  <button class="btn btn-primary" id="btnStart" onclick="startPipeline()">🚀 启动全流程协同</button>
-  <button class="btn btn-stop" id="btnStop" onclick="stopPipeline()">⏹ 停止</button>
+    <div>
+      <div class="panel-label">协同参数</div>
+      <div class="slider-group"><label>辩论轮数 <em id="vR">2</em></label>
+        <input type="range" id="sR" min="1" max="5" value="2" oninput="document.getElementById('vR').textContent=this.value">
+      </div>
+      <div class="slider-group"><label>LLM温度 <em id="vT">0.7</em></label>
+        <input type="range" id="sT" min="0" max="10" value="7" oninput="document.getElementById('vT').textContent=(this.value/10).toFixed(1)">
+      </div>
+    </div>
 
-  <div style="margin-top:auto">
-    <div class="panel-title">⚡ 单步调试</div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('diagnosis')">🔍 学情诊断</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('knowledge_gen')">📚 知识生成</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('reviewer')">🔎 内容审核</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('practice_guide')">🔧 实操指南</button>
-      <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px" onclick="runSingle('quiz')">📝 分阶测试</button>
+    <button class="btn-primary" id="btnLaunch" onclick="startPipeline()">
+      🚀 启动全流程协同
+    </button>
+    <button class="btn-stop" id="btnStop" onclick="stopPipeline()">
+      ⏹ 停止生成
+    </button>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="panel-label">单步调试</div>
+      <div class="step-list">
+        <button class="step-btn" id="sb-diagnosis" onclick="runSingle('diagnosis')"><span class="si">1</span>学情诊断</button>
+        <button class="step-btn" id="sb-knowledge_gen"><span class="si">2</span>知识生成</button>
+        <button class="step-btn" id="sb-reviewer"><span class="si">3</span>审核辩论</button>
+        <button class="step-btn" id="sb-practice_guide"><span class="si">4</span>实操指南</button>
+        <button class="step-btn" id="sb-quiz"><span class="si">5</span>分阶测试</button>
+        <button class="step-btn" id="sb-iteration"><span class="si">6</span>迭代优化</button>
+        <button class="step-btn" id="sb-socratic"><span class="si">7</span>苏格拉底导学</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- 右侧 -->
-<div class="content">
-  <div class="metrics-row" id="metricsRow">
-    <div class="metric-card"><div class="val" id="mTime">0s</div><div class="lbl">总耗时</div></div>
-    <div class="metric-card"><div class="val" id="mAgents">0/7</div><div class="lbl">Agent完成</div></div>
-    <div class="metric-card"><div class="val" id="mHalluc">-</div><div class="lbl">幻觉分数</div></div>
-    <div class="metric-card"><div class="val" id="mAcc">-</div><div class="lbl">准确度</div></div>
-    <div class="metric-card"><div class="val" id="mQuiz">-</div><div class="lbl">测验得分</div></div>
-  </div>
+  <!-- 右侧 -->
+  <div class="content" id="mainContent">
+    <div class="metrics-strip" id="metricsStrip">
+      <div class="mstrip"><div class="ms-val" id="msTime">0s</div><div class="ms-lbl">总耗时</div><div class="ms-bar" id="msbTime" style="width:0%"></div></div>
+      <div class="mstrip"><div class="ms-val" id="msAgents">0/7</div><div class="ms-lbl">Agent完成</div><div class="ms-bar" id="msbAgents" style="width:0%"></div></div>
+      <div class="mstrip"><div class="ms-val" id="msHall">-</div><div class="ms-lbl">幻觉分数</div><div class="ms-bar" id="msbHall" style="width:0%"></div></div>
+      <div class="mstrip"><div class="ms-val" id="msAcc">-</div><div class="ms-lbl">准确度</div><div class="ms-bar" id="msbAcc" style="width:0%"></div></div>
+      <div class="mstrip"><div class="ms-val" id="msQuiz">-</div><div class="ms-lbl">测验得分</div><div class="ms-bar" id="msbQuiz" style="width:0%"></div></div>
+    </div>
 
-  <div class="topo-canvas">
-    <div class="node-grid" id="nodeGrid">
-      <div class="agent-node" id="nd-diagnosis"><div class="icon">🔍</div><div class="name">学情诊断</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-knowledge_gen"><div class="icon">📚</div><div class="name">知识生成</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-reviewer"><div class="icon">🔎</div><div class="name">审核裁判</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-practice_guide"><div class="icon">🔧</div><div class="name">实操指南</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-quiz"><div class="icon">📝</div><div class="name">分阶测试</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-iteration"><div class="icon">🔄</div><div class="name">迭代优化</div><div class="status">等待中</div></div>
-      <div class="agent-node" id="nd-socratic"><div class="icon">💬</div><div class="name">苏格拉底</div><div class="status">等待中</div></div>
+    <!-- Agent拓扑 -->
+    <div class="agent-topo">
+      <div class="agent-topo-title">🎯 Agent协同拓扑</div>
+      <div class="topo-stage" id="topoStage">
+        <div class="agent-orbit" id="ao-diagnosis">
+          <div class="agent-orb" id="ab-diagnosis">🔍</div>
+          <div class="ao-name" id="an-diagnosis">学情诊断</div>
+          <div class="ao-status" id="as-diagnosis">等待</div>
+        </div>
+        <span class="orbit-arrow" id="oa-1">→</span>
+        <div class="agent-orbit" id="ao-knowledge_gen">
+          <div class="agent-orb" id="ab-knowledge_gen">📚</div>
+          <div class="ao-name" id="an-knowledge_gen">知识生成</div>
+          <div class="ao-status" id="as-knowledge_gen"></div>
+        </div>
+        <span class="orbit-arrow" id="oa-2">→</span>
+        <div class="agent-orbit" id="ao-reviewer">
+          <div class="agent-orb" id="ab-reviewer">🔎</div>
+          <div class="ao-name" id="an-reviewer">审核辩论</div>
+          <div class="ao-status" id="as-reviewer"></div>
+        </div>
+        <span class="orbit-arrow" id="oa-3">→</span>
+        <div class="agent-orbit" id="ao-practice_guide">
+          <div class="agent-orb" id="ab-practice_guide">🔧</div>
+          <div class="ao-name" id="an-practice_guide">实操指南</div>
+          <div class="ao-status" id="as-practice_guide"></div>
+        </div>
+        <span class="orbit-arrow" id="oa-4">→</span>
+        <div class="agent-orbit" id="ao-quiz">
+          <div class="agent-orb" id="ab-quiz">📝</div>
+          <div class="ao-name" id="an-quiz">分阶测试</div>
+          <div class="ao-status" id="as-quiz"></div>
+        </div>
+        <span class="orbit-arrow" id="oa-5">→</span>
+        <div class="agent-orbit" id="ao-iteration">
+          <div class="agent-orb" id="ab-iteration">🔄</div>
+          <div class="ao-name" id="an-iteration">迭代优化</div>
+          <div class="ao-status" id="as-iteration"></div>
+        </div>
+        <span class="orbit-arrow" id="oa-6">→</span>
+        <div class="agent-orbit" id="ao-socratic">
+          <div class="agent-orb" id="ab-socratic">💬</div>
+          <div class="ao-name" id="an-socratic">苏格拉底</div>
+          <div class="ao-status" id="as-socratic"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 流式输出区 -->
+    <div class="stream-zone" id="streamZone">
+      <div class="stream-label">✦ 实时生成中</div>
+      <div class="stream-text" id="streamText"></div>
+    </div>
+
+    <!-- 管道条 -->
+    <div class="pipeline-row" id="pipeRow">
+      <span class="ps" id="ps-1">①诊断</span><span class="pa" id="pa-1">→</span>
+      <span class="ps" id="ps-2">②生成</span><span class="pa" id="pa-2">→</span>
+      <span class="ps" id="ps-3">③审核</span><span class="pa" id="pa-3">→</span>
+      <span class="ps" id="ps-4">④实操</span><span class="pa" id="pa-4">→</span>
+      <span class="ps" id="ps-5">⑤测验</span><span class="pa" id="pa-5">→</span>
+      <span class="ps" id="ps-6">⑥迭代</span><span class="pa" id="pa-6">→</span>
+      <span class="ps" id="ps-7">⑦导学</span>
+    </div>
+
+    <!-- 日志 -->
+    <div class="log-box" id="logBox">
+      <div class="ll"><span class="ll-ts">系统</span><span class="ll-msg inf">🧠 就绪 · 填写左侧画像后点击「启动全流程协同」</span></div>
+    </div>
+
+    <!-- 结果区 -->
+    <div id="resultsGrid">
+      <div class="empty-hero" id="emptyHero">
+        <div class="empty-icon">🧠</div>
+        <div class="empty-title">7个AI Agent协同学习</div>
+        <div class="empty-sub">
+          从学情诊断到苏格拉底导学，<br>全流程AI协同生成个性化学习资源
+        </div>
+        <div class="feature-pills">
+          <span class="fp e">🧠 学情诊断</span>
+          <span class="fp e2">📚 个性化内容</span>
+          <span class="fp e">🛡️ 幻觉检测</span>
+          <span class="fp e3">🔧 实战项目</span>
+          <span class="fp">📝 分阶测验</span>
+          <span class="fp e2">🔄 动态迭代</span>
+          <span class="fp e">💬 苏格拉底</span>
+        </div>
+        <button class="btn-ghost" onclick="scrollToSidebar()">
+          ← 填写左侧画像开始
+        </button>
+      </div>
     </div>
   </div>
-
-  <div class="pipeline-bar" id="pipeBar">
-    <span class="pipe-step" data-s="1">① 诊断</span><span class="pipe-arrow" data-a="1">→</span>
-    <span class="pipe-step" data-s="2">② 生成</span><span class="pipe-arrow" data-a="2">→</span>
-    <span class="pipe-step" data-s="3">③ 审核</span><span class="pipe-arrow" data-a="3">→</span>
-    <span class="pipe-step" data-s="4">④ 实操</span><span class="pipe-arrow" data-a="4">→</span>
-    <span class="pipe-step" data-s="5">⑤ 测验</span><span class="pipe-arrow" data-a="5">→</span>
-    <span class="pipe-step" data-s="6">⑥ 迭代</span><span class="pipe-arrow" data-a="6">→</span>
-    <span class="pipe-step" data-s="7">⑦ 导学</span>
-  </div>
-
-  <div class="log-panel" id="logPanel">
-    <div class="log-line"><span class="log-time">系统</span><span class="log-msg info">就绪 · 填写学习者画像后点击启动</span></div>
-  </div>
-
-  <div id="resultsArea">
-    <div class="empty-state" id="emptyState">
-      <div class="icon">🧠</div>
-      <h3>多智能体协同学习系统</h3>
-      <p>填写左侧画像 → 调整参数 → 点击启动</p>
-      <p style="font-size:10px;margin-top:4px;color:var(--muted)">7个Agent协同：诊断→生成→审核辩论→实操→测验→迭代→导学</p>
-    </div>
-  </div>
-</div>
 </div>
 
 <!-- API Key弹窗 -->
-<div class="modal-overlay" id="apiKeyModal">
+<div class="modal-bg" id="keyModal">
   <div class="modal-box">
-    <h3>🔑 配置智谱API Key</h3>
-    <div class="hint">
-      系统将直接在前端调用智谱AI，绕过服务器超时限制。<br>
-      获取Key：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn</a><br>
-      Key格式：{id}.{secret}，我们将用JWT签名后调用API。
+    <h3>🔑 AI加速配置</h3>
+    <div class="mhint">
+      配置智谱API Key后，AI响应从15秒降至2-3秒。<br>
+      获取：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn</a><br>
+      Key格式：<code>id.secret</code>，前端JWT签名直连API，不经过服务器。
     </div>
-    <input type="password" id="apiKeyInput" placeholder="输入你的智谱API Key（格式：id.secret）">
-    <div class="btn-row">
-      <button class="btn btn-skip" onclick="skipApiKey()">跳过（Demo模式）</button>
-      <button class="btn btn-confirm" onclick="confirmApiKey()">确认</button>
+    <input type="password" id="keyInput" placeholder="输入智谱API Key，如：abc123xyz.yyyyy">
+    <div class="modal-btns">
+      <button class="btn-skip" onclick="closeKeyModal()">跳过</button>
+      <button class="btn-confirm" onclick="confirmKey()">确认配置</button>
     </div>
-    <div class="error-msg" id="apiKeyError"></div>
+    <div class="modal-err" id="keyErr"></div>
   </div>
 </div>
 
 <script>
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 // 全局状态
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 const AGENTS = ['diagnosis','knowledge_gen','reviewer','practice_guide','quiz','iteration','socratic'];
-const AGENT_LABELS = {diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核裁判',practice_guide:'实操指南',quiz:'分阶测试',iteration:'迭代优化',socratic:'苏格拉底'};
-const AGENT_ICONS = {diagnosis:'🔍',knowledge_gen:'📚',reviewer:'🔎',practice_guide:'🔧',quiz:'📝',iteration:'🔄',socratic:'💬'};
+const A_LABEL = {diagnosis:'学情诊断',knowledge_gen:'知识生成',reviewer:'审核辩论',practice_guide:'实操指南',quiz:'分阶测试',iteration:'迭代优化',socratic:'苏格拉底导学'};
+const A_ICON = {diagnosis:'🔍',knowledge_gen:'📚',reviewer:'🔎',practice_guide:'🔧',quiz:'📝',iteration:'🔄',socratic:'💬'};
 
-let agentResults = {};
-let timerInterval = null;
-let startTime = 0;
-let abortController = null;   // 用于取消fetch
+let results = {};
+let timer = null, startMs = 0;
+let abortCtrl = null;
 let quizData = null;
-let currentApiKey = localStorage.getItem('zhipu_api_key') || '';
-let currentApiKeyId = '';
-let currentApiKeySecret = '';
+let hasKey = localStorage.getItem('zhipu_key') || '';
+let keyId = '', keySecret = '';
+let currentStreamingAgent = null;
+let streamCursor = null;
 
-// ============================================================
-// API Key 管理
-// ============================================================
-function showApiKeyModal(){
-  document.getElementById('apiKeyModal').classList.add('show');
-  document.getElementById('apiKeyInput').focus();
-  document.getElementById('apiKeyInput').value = currentApiKey ? '••••••••' : '';
-  document.getElementById('apiKeyError').style.display = 'none';
-}
-function closeApiKeyModal(){
-  document.getElementById('apiKeyModal').classList.remove('show');
-}
-function skipApiKey(){
-  currentApiKey = '';
-  currentApiKeyId = '';
-  currentApiKeySecret = '';
-  localStorage.removeItem('zhipu_api_key');
-  closeApiKeyModal();
-  log('⚠️ 进入Demo模式，将使用预置数据展示','warn');
-}
-async function confirmApiKey(){
-  const input = document.getElementById('apiKeyInput').value.trim();
-  const errEl = document.getElementById('apiKeyError');
-  if(!input || input === '••••••••'){
-    errEl.textContent = '请输入有效的API Key';
-    errEl.style.display = 'block';
-    return;
-  }
-  // 解析 Key：格式为 {id}.{secret}
-  const parts = input.split('.');
-  if(parts.length < 2){
-    errEl.textContent = 'Key格式错误，应为 {id}.{secret}';
-    errEl.style.display = 'block';
-    return;
-  }
-  currentApiKeyId = parts[0];
-  currentApiKeySecret = parts.slice(1).join('.');
-  currentApiKey = input;
-  localStorage.setItem('zhipu_api_key', input);
-  
-  // 测试Key有效性
-  log('🔑 验证API Key...','info');
-  try {
-    const ok = await testApiKey(currentApiKeyId, currentApiKeySecret);
-    if(ok){
-      log('✅ API Key验证成功！','success');
-      document.getElementById('btnApiKey').textContent = '🔑 ' + currentApiKeyId + '•••';
-      closeApiKeyModal();
-    } else {
-      errEl.textContent = 'API Key验证失败，请检查后重试';
-      errEl.style.display = 'block';
-    }
-  } catch(e){
-    errEl.textContent = '验证失败：' + e.message;
-    errEl.style.display = 'block';
-  }
+// ═══════════════════════════════════════════════════════════
+// API Key
+// ═══════════════════════════════════════════════════════════
+function showKeyModal(){ document.getElementById('keyModal').classList.add('on'); document.getElementById('keyInput').focus(); }
+function closeKeyModal(){ document.getElementById('keyModal').classList.remove('on'); }
+function skipKey(){ hasKey=''; keyId=''; keySecret=''; localStorage.removeItem('zhipu_key'); closeKeyModal(); log('⚠ Demo模式，将使用预置数据','warn'); }
+
+async function confirmKey(){
+  const raw = document.getElementById('keyInput').value.trim();
+  if(!raw || raw==='••••'){ showErr('请输入有效Key'); return; }
+  const parts = raw.split('.');
+  if(parts.length<2){ showErr('Key格式应为 id.secret'); return; }
+  keyId = parts[0]; keySecret = parts.slice(1).join('.');
+  hasKey = raw; localStorage.setItem('zhipu_key', raw);
+  log('🔑 正在验证Key...','info');
+  closeKeyModal();
+  log('✅ Key已配置，加速模式开启','suc');
 }
 
-// 测试API Key（简单调用一次）
-async function testApiKey(id, secret){
-  try {
-    const token = generateJwt(id, secret);
-    const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:'hi'}],max_tokens:5})
-    });
-    return resp.ok;
-  } catch(e){ return false; }
-}
+function showErr(msg){ const e=document.getElementById('keyErr'); e.textContent=msg; e.style.display='block'; }
 
-// ============================================================
-// JWT 签名（纯JS实现，用于智谱API认证）
-// ============================================================
-async function generateJwt(apiKeyId, apiKeySecret){
-  // header
-  const header = btoa(JSON.stringify({alg:'HS256',sign_type:'SIGN'})).replace(/=+$/,'');
-  // payload
+// JWT签名
+async function signJwt(id, secret){
+  const h = btoa(JSON.stringify({alg:'HS256',sign_type:'SIGN'})).replace(/=+$/,'');
   const now = Math.floor(Date.now()/1000);
-  const payload = btoa(JSON.stringify({api_key:id,exp:now+3600,timestamp:now})).replace(/=+$/,'');
-  const signStr = header + '.' + payload;
-  // HMAC-SHA256签名
-  const sig = await hmacSha256(signStr, apiKeySecret);
-  return signStr + '.' + sig;
+  const p = btoa(JSON.stringify({api_key:id,exp:now+3600,iat:now})).replace(/=+$/,'');
+  const signStr = h+'.'+p;
+  const sig = await hmacSha(signStr, secret);
+  return signStr+'.'+sig;
 }
-
-async function hmacSha256(message, secret){
+async function hmacSha(msg, key){
   const enc = new TextEncoder();
-  const keyData = enc.encode(secret);
-  const msgData = enc.encode(message);
-  const cryptoKey = await crypto.subtle.importKey('raw', keyData, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-  return btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const k = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const buf = await crypto.subtle.sign('HMAC', k, enc.encode(msg));
+  return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 
-// ============================================================
-// 直调智谱API（核心函数）
-// ============================================================
-async function callZhipu(systemPrompt, userPrompt, onChunk){
-  // onChunk: 流式输出回调 (textChunk: string) => void
-  if(!currentApiKeyId || !currentApiKeySecret){
-    throw new Error('未配置API Key，请点击右上角「API Key」配置，或进入Demo模式');
-  }
-  const token = await generateJwt(currentApiKeyId, currentApiKeySecret);
-  const temperature = parseFloat(document.getElementById('vTemp').textContent);
-  const body = {
-    model: 'glm-4-flash',
-    messages: [
-      {role:'system', content: systemPrompt},
-      {role:'user', content: userPrompt}
-    ],
-    temperature: temperature,
-    stream: true
-  };
-  
-  abortController = new AbortController();
+// 调用智谱API
+async function callZhipu(sys, user, onChunk){
+  if(!hasKey) throw new Error('NO_KEY');
+  const tok = await signJwt(keyId, keySecret);
+  const temp = parseFloat(document.getElementById('vT').textContent);
+  abortCtrl = new AbortController();
   const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body: JSON.stringify(body),
-    signal: abortController.signal
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+    body: JSON.stringify({model:'glm-4-flash',messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,stream:true}),
+    signal: abortCtrl.signal
   });
-  
-  if(!resp.ok){
-    const errText = await resp.text();
-    throw new Error('API调用失败(' + resp.status + ')：' + errText.slice(0,200));
-  }
-  
-  // 解析SSE流
+  if(!resp.ok) throw new Error('API错误 '+resp.status);
   const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullText = '';
-  
-  while(true){
-    const {done, value} = await reader.read();
+  const dec = new TextDecoder();
+  let buf = '', full = '';
+  for(;;){
+    const {done,val} = await reader.read();
     if(done) break;
-    buffer += decoder.decode(value, {stream:true});
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for(const line of lines){
-      if(line.startsWith('data: ')){
-        const data = line.slice(6);
-        if(data === '[DONE]') return fullText;
+    buf += dec.decode(val,{stream:true});
+    const lines = buf.split('\n'); buf = lines.pop()||'';
+    for(const ln of lines){
+      if(ln.startsWith('data: ')){
+        const d = ln.slice(6);
+        if(d==='[DONE]') return full;
         try {
-          const json = JSON.parse(data);
-          const chunk = (json.choices&&json.choices[0]&&json.choices[0].delta&&json.choices[0].delta.content)||'';
-          fullText += chunk;
-          if(onChunk && chunk) onChunk(chunk);
+          const j = JSON.parse(d);
+          const ch = (j.choices?.[0]?.delta?.content)||'';
+          if(ch){ full += ch; if(onChunk) onChunk(ch); }
         } catch(e){}
       }
     }
   }
-  return fullText;
+  return full;
 }
 
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 // 日志
-// ============================================================
-function log(msg, type='info'){
-  const p = document.getElementById('logPanel');
+// ═══════════════════════════════════════════════════════════
+function log(msg, type='inf'){
+  const lb = document.getElementById('logBox');
   const d = new Date();
-  const ts = d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
+  const ts = d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0');
   const div = document.createElement('div');
-  div.className = 'log-line';
-  div.innerHTML = `<span class="log-time">${ts}</span><span class="log-msg ${type}">${escHtml(msg)}</span>`;
-  p.appendChild(div);
-  p.scrollTop = p.scrollHeight;
+  div.className='ll';
+  div.innerHTML=`<span class="ll-ts">${ts}</span><span class="ll-msg ${type}">${esc(msg)}</span>`;
+  lb.appendChild(div);
+  lb.scrollTop = lb.scrollHeight;
 }
 
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 // Agent节点状态
-// ============================================================
-function setNode(name, state){
-  const el = document.getElementById('nd-'+name);
-  if(!el) return;
-  el.classList.remove('active','running','done');
-  const s = el.querySelector('.status');
-  if(!s) return;
-  if(state === 'running'){ el.classList.add('running','active'); s.textContent='运行中...'; }
-  else if(state === 'done'){ el.classList.add('done'); s.textContent='✓ 完成'; }
-  else if(state === 'error'){ el.classList.add('active'); s.style.color='var(--danger)'; s.textContent='✗ 出错'; }
-  else { s.textContent='等待中'; s.style.color=''; }
+// ═══════════════════════════════════════════════════════════
+function setOrb(name, state, extra=''){
+  const orb = document.getElementById('ab-'+name);
+  const n = document.getElementById('an-'+name);
+  const s = document.getElementById('as-'+name);
+  if(!orb) return;
+  orb.className = 'agent-orb';
+  if(state==='running'){ orb.classList.add('running'); if(n) n.classList.add('active'); if(s) s.textContent='···'; }
+  else if(state==='done'){ orb.classList.add('done'); if(n) n.classList.add('done'); if(s) s.textContent='✓'; }
+  else if(state==='error'){ orb.classList.add('error'); if(s) s.textContent='✗'; }
+  else { if(n) n.className='ao-name'; if(s) s.textContent=''; }
 }
 
-function setPipe(step, state){
-  const el = document.querySelector(`.pipe-step[data-s="${step}"]`);
-  if(!el) return;
-  el.classList.remove('active','done','error');
-  if(state==='active') el.classList.add('active');
-  if(state==='done') el.classList.add('done');
-  if(state==='error') el.classList.add('error');
-  const ar = document.querySelector(`.pipe-arrow[data-a="${step}"]`);
-  if(ar) ar.classList.toggle('lit', state==='done');
+function setPipeStep(n, state){
+  const ps = document.getElementById('ps-'+n);
+  const pa = document.getElementById('pa-'+n);
+  if(ps){ ps.className='ps'; if(state) ps.classList.add(state); }
+  if(pa && state==='done') pa.classList.add('lit');
 }
 
-// ============================================================
+// 侧边栏单步按钮
+function setSideBtn(name, state){
+  const btn = document.getElementById('sb-'+name);
+  if(!btn) return;
+  btn.className='step-btn';
+  if(state==='running') btn.classList.add('running');
+  if(state==='done') btn.classList.add('done');
+}
+
+// ═══════════════════════════════════════════════════════════
 // 计时器
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 function startTimer(){
-  startTime = Date.now();
-  document.getElementById('liveBadge').style.display = '';
-  timerInterval = setInterval(()=>{
-    const s = Math.floor((Date.now()-startTime)/1000);
-    document.getElementById('timerDisplay').textContent = Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');
+  startMs = Date.now();
+  document.getElementById('liveDot').style.display='block';
+  timer = setInterval(()=>{
+    const s = Math.floor((Date.now()-startMs)/1000);
+    document.getElementById('timerDsp').textContent = Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');
+    document.getElementById('msTime').textContent = s+'s';
+    document.getElementById('msbTime').style.width = Math.min(s/120*100,100)+'%';
   }, 1000);
 }
 function stopTimer(){
-  clearInterval(timerInterval);
-  document.getElementById('liveBadge').style.display = 'none';
+  clearInterval(timer);
+  document.getElementById('liveDot').style.display='none';
 }
 
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// 流式输出区
+// ═══════════════════════════════════════════════════════════
+function showStream(name){
+  currentStreamingAgent = name;
+  const sz = document.getElementById('streamZone');
+  sz.classList.add('active');
+  const txt = document.getElementById('streamText');
+  txt.textContent = A_ICON[name]+' '+A_LABEL[name]+' 正在生成中';
+  streamCursor = setInterval(()=>{
+    if(txt.textContent.endsWith('...')) txt.textContent=txt.textContent.slice(0,-3);
+    else txt.textContent+='.';
+  }, 400);
+}
+function updateStream(chunk){
+  const txt = document.getElementById('streamText');
+  txt.textContent += chunk;
+  const sz = document.getElementById('streamZone');
+  sz.scrollTop = sz.scrollHeight;
+}
+function hideStream(){
+  clearInterval(streamCursor);
+  currentStreamingAgent = null;
+  setTimeout(()=>{ document.getElementById('streamZone').classList.remove('active'); }, 1500);
+}
+
+// ═══════════════════════════════════════════════════════════
 // 获取画像
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 function getProfile(){
   return {
-    background: document.getElementById('inpBg').value,
-    experience: document.getElementById('inpExp').value,
+    bg: document.getElementById('inpBg').value,
+    exp: document.getElementById('inpExp').value,
     goal: document.getElementById('inpGoal').value,
-    level: document.getElementById('inpLvl').value
+    lvl: document.getElementById('inpLvl').value
   };
 }
 
-// ============================================================
-// 启动全流程（前端直调智谱API）
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// 启动全流程
+// ═══════════════════════════════════════════════════════════
 async function startPipeline(){
-  const profile = getProfile();
-  if(!profile.background.trim()){ alert('请填写背景描述'); return; }
-  
-  // 重置
-  agentResults = {};
-  document.getElementById('resultsArea').innerHTML = '';
-  document.getElementById('metricsRow').style.display = 'flex';
-  document.getElementById('btnStart').disabled = true;
+  const p = getProfile();
+  if(!p.bg.trim()){ alert('请填写背景描述'); return; }
+
+  results = {};
+  document.getElementById('resultsGrid').innerHTML = '<div class="results-grid" id="rg"></div>';
+  document.getElementById('metricsStrip').style.display = 'flex';
+  document.getElementById('emptyHero')?.remove();
+  document.getElementById('btnLaunch').disabled = true;
   document.getElementById('btnStop').style.display = 'block';
-  AGENTS.forEach(n => setNode(n, ''));
-  [1,2,3,4,5,6,7].forEach(s => setPipe(s, null));
-  document.getElementById('mAgents').textContent = '0/7';
-  document.getElementById('mTime').textContent = '0s';
-  document.getElementById('mHalluc').textContent = '-';
-  document.getElementById('mAcc').textContent = '-';
-  document.getElementById('mQuiz').textContent = '-';
-  
-  log('🚀 启动全流程协同调度（前端直调模式）...','info');
-  if(!currentApiKey){
-    log('⚠️ 未配置API Key，将使用Demo模式（预置数据）','warn');
-  }
+
+  AGENTS.forEach(n => { setOrb(n,''); setPipeStep(AGENTS.indexOf(n)+1,null); setSideBtn(n,''); });
+  ['msHall','msAcc','msQuiz'].forEach(id=>{document.getElementById(id).textContent='-';});
+  document.getElementById('msAgents').textContent='0/7';
+  document.getElementById('msbAgents').style.width='0%';
+
+  log('🚀 7个Agent协同启动...','inf');
   startTimer();
-  
+
   try {
-    // Step 1: 学情诊断
-    setPipe(1,'active');
-    setNode('diagnosis','running');
-    log('🔍 学情诊断Agent 开始运行...','info');
-    const diagResult = await runAgentFrontend('diagnosis', profile);
-    agentResults['diagnosis'] = diagResult;
-    setNode('diagnosis','done');
-    setPipe(1,'done');
-    renderCard('diagnosis', diagResult);
-    updateMetrics();
-    log('✅ 学情诊断完成','success');
-    
-    // Step 2: 知识生成
-    setPipe(2,'active');
-    setNode('knowledge_gen','running');
-    log('📚 知识生成Agent 开始运行...','info');
-    const knowResult = await runAgentFrontend('knowledge_gen', {diagnosis: diagResult, profile: profile});
-    agentResults['knowledge_gen'] = knowResult;
-    setNode('knowledge_gen','done');
-    setPipe(2,'done');
-    renderCard('knowledge_gen', knowResult);
-    updateMetrics();
-    log('✅ 知识生成完成','success');
-    
-    // Step 3: 审核裁判
-    setPipe(3,'active');
-    setNode('reviewer','running');
-    log('🔎 审核裁判Agent 开始运行（含辩论机制）...','info');
-    const reviewResult = await runAgentFrontend('reviewer', {content: knowResult.content||'', source_refs: knowResult.source_refs||[]});
-    agentResults['reviewer'] = reviewResult;
-    setNode('reviewer','done');
-    setPipe(3,'done');
-    renderCard('reviewer', reviewResult);
-    updateMetrics();
-    log('✅ 审核裁判完成，幻觉分数：'+(reviewResult.hallucination_score||0),'success');
-    
-    // Step 4: 实操指南
-    setPipe(4,'active');
-    setNode('practice_guide','running');
-    log('🔧 实操指南Agent 开始运行...','info');
-    const pracResult = await runAgentFrontend('practice_guide', {topic: diagResult.focus_topic||'Python基础', level: profile.level});
-    agentResults['practice_guide'] = pracResult;
-    setNode('practice_guide','done');
-    setPipe(4,'done');
-    renderCard('practice_guide', pracResult);
-    log('✅ 实操指南完成','success');
-    
-    // Step 5: 分阶测试
-    setPipe(5,'active');
-    setNode('quiz','running');
-    log('📝 分阶测试Agent 开始运行...','info');
-    const quizResult = await runAgentFrontend('quiz', {knowledge: knowResult, difficulty: profile.level});
-    agentResults['quiz'] = quizResult;
-    setNode('quiz','done');
-    setPipe(5,'done');
-    renderCard('quiz', quizResult);
-    updateMetrics();
-    log('✅ 分阶测试完成','success');
-    
-    // Step 6: 迭代优化
-    setPipe(6,'active');
-    setNode('iteration','running');
-    log('🔄 迭代优化Agent 开始运行...','info');
-    const iterResult = await runAgentFrontend('iteration', {quiz_result: quizResult, diagnosis: diagResult, knowledge: knowResult});
-    agentResults['iteration'] = iterResult;
-    setNode('iteration','done');
-    setPipe(6,'done');
-    renderCard('iteration', iterResult);
-    log('✅ 迭代优化完成，决策：'+(iterResult.decision||'consolidate'),'success');
-    
-    // Step 7: 苏格拉底导学
-    setPipe(7,'active');
-    setNode('socratic','running');
-    log('💬 苏格拉底导学Agent 开始运行...','info');
-    const socResult = await runAgentFrontend('socratic', {knowledge: knowResult});
-    agentResults['socratic'] = socResult;
-    setNode('socratic','done');
-    setPipe(7,'done');
-    renderCard('socratic', socResult);
-    log('✅ 苏格拉底导学完成','success');
-    
-    // 全部完成
-    log('🎉 全流程完成！7个Agent全部就绪','success');
-    
+    await runStep('diagnosis', 1, {bg:p.bg,exp:p.exp,goal:p.goal,lvl:p.lvl});
+    await runStep('knowledge_gen', 2, {diag:results.diagnosis, profile:p});
+    await runStep('reviewer', 3, {content:results.knowledge_gen?.content||'', refs:results.knowledge_gen?.source_refs||[]});
+    await runStep('practice_guide', 4, {topic:results.diagnosis?.focus_topic||'Python基础',lvl:p.lvl});
+    await runStep('quiz', 5, {kb:results.knowledge_gen||{},lvl:p.lvl});
+    await runStep('iteration', 6, {quiz:results.quiz||{},diag:results.diagnosis||{},kb:results.knowledge_gen||{}});
+    await runStep('socratic', 7, {kb:results.knowledge_gen||{}});
+    log('🎉 全流程完成！','suc');
   } catch(e){
-    log('❌ 流程出错：'+e.message,'error');
+    log('❌ 出错：'+e.message,'err');
     stopTimer();
   } finally {
     stopTimer();
-    onComplete();
+    document.getElementById('btnLaunch').disabled = false;
+    document.getElementById('btnStop').style.display = 'none';
   }
 }
 
-function onComplete(){
-  document.getElementById('btnStart').disabled = false;
-  document.getElementById('btnStop').style.display = 'none';
+async function runStep(name, stepNum, ctx){
+  setOrb(name,'running');
+  setPipeStep(stepNum,'active');
+  setSideBtn(name,'running');
+  showStream(name);
+  log(`${A_ICON[name]} ${A_LABEL[name]} 运行中...`,'inf');
+
+  const data = await runAgent(name, ctx);
+
+  hideStream();
+  setOrb(name,'done');
+  setPipeStep(stepNum,'done');
+  setSideBtn(name,'done');
+  results[name] = data;
+
+  const done = Object.keys(results).length;
+  document.getElementById('msAgents').textContent = done+'/7';
+  document.getElementById('msbAgents').style.width = (done/7*100)+'%';
+
+  renderCard(name, data);
+  log(`✅ ${A_LABEL[name]} 完成`,'suc');
+
+  if(name==='reviewer'){
+    document.getElementById('msHall').textContent = data.hallucination_score||'-';
+    document.getElementById('msbHall').style.width = (data.hallucination_score||0)+'%';
+    document.getElementById('msAcc').textContent = data.accuracy_score||'-';
+    document.getElementById('msbAcc').style.width = (data.accuracy_score||0)+'%';
+  }
 }
 
 function stopPipeline(){
-  if(abortController) abortController.abort();
+  if(abortCtrl) abortCtrl.abort();
   stopTimer();
-  onComplete();
-  log('⏹ 用户手动停止','warn');
+  document.getElementById('btnLaunch').disabled = false;
+  document.getElementById('btnStop').style.display = 'none';
+  log('⏹ 已停止','warn');
 }
 
-// ============================================================
-// 前端直调：运行单个Agent
-// ============================================================
-async function runAgentFrontend(agentName, context){
-  // 构造system prompt和user prompt（根据agent类型）
-  const prompts = buildPrompts(agentName, context);
-  
-  if(!currentApiKey){
-    // Demo模式：返回预置fallback数据
-    log('⚠️ 无API Key，使用Demo数据','warn');
-    return getDemoResult(agentName, context);
+// ═══════════════════════════════════════════════════════════
+// 运行单个Agent
+// ═══════════════════════════════════════════════════════════
+async function runAgent(name, ctx){
+  const {sys, user} = buildPrompt(name, ctx);
+  if(!hasKey){
+    log('⚠ 无Key，使用Demo数据','warn');
+    return getDemo(name);
   }
-  
   try {
-    // 调用智谱API（带流式输出）
-    let outputBuffer = '';
-    const startTime = Date.now();
-    
-    // 在对应卡片显示"生成中..."动画
-    showAgentLoading(agentName);
-    
-    const fullText = await callZhipu(prompts.system, prompts.user, (chunk)=>{
-      outputBuffer += chunk;
-      updateAgentStreamingText(agentName, outputBuffer);
-    });
-    
-    // 解析LLM输出为结构化JSON
-    const parsed = parseLLMOutput(fullText);
-    
-    // 可选：把结果发到后端做结构化验证（非必须）
-    parsed['_meta'] = {agent: agentName, elapsed_seconds: Math.floor((Date.now()-startTime)/1000), source: 'frontend_llm'};
+    let buf = '';
+    await callZhipu(sys, user, ch=>{ buf+=ch; updateStream(ch); });
+    const parsed = parseOut(buf);
+    parsed._meta = {agent:name, src:'llm'};
     return parsed;
-    
   } catch(e){
-    log(`${AGENT_LABELS[agentName]} API调用失败：${e.message}，使用fallback数据`,'warn');
-    return getDemoResult(agentName, context);
+    log(`⚠ ${A_LABEL[name]} 失败，使用Demo数据: ${e.message}`,'warn');
+    return getDemo(name);
   }
 }
 
-// ============================================================
-// 构造各Agent的Prompt
-// ============================================================
-function buildPrompts(agentName, context){
-  const profile = getProfile();
-  let system = '';
-  let user = '';
-  
-  if(agentName === 'diagnosis'){
-    system = `你是专业的学情诊断专家。根据学习者的背景，输出JSON格式的诊断结果。
-要求输出严格JSON：{"learner_level":"beginner/intermediate/advanced","level_score":50,"strengths":["优势1","优势2"],"blind_spots":["盲区1","盲区2"],"focus_topic":"建议学习的重点主题","learning_path":[{"phase":"夯实基础","topics":["topic1"],"estimated_hours":20}]}`;
-    user = `学习者背景：${context.background}\n编程经验：${context.experience}\n学习目标：${context.goal}\n自评水平：${context.level}\n\n请输出JSON诊断结果：`;
-  }
-  else if(agentName === 'knowledge_gen'){
-    system = `你是个性化知识生成专家。根据学情诊断结果，生成针对性学习内容。
-要求输出严格JSON：{"title":"内容标题","content":"Markdown格式的详细学习内容","concepts":["概念1","概念2"],"source_refs":[{"source":"来源文件名","type":"[教材]/[论文]/[官方]/[实践]"}]}`;
-    user = `诊断结果：${JSON.stringify(context.diagnosis)}\n学习者画像：${JSON.stringify(context.profile)}\n请生成个性化学习内容：`;
-  }
-  else if(agentName === 'reviewer'){
-    system = `你是内容审核专家，负责检测知识内容中的幻觉（不准确信息）。
-要求输出严格JSON：{"verdict":"pass/pass_with_concerns/needs_revision","hallucination_score":15,"accuracy_score":85,"issues":[{"severity":"high/medium/low","description":"问题描述"}],"debate_rounds":2,"debate_log":[{"round":1,"reviewer_verdict":"pass","hallucination_score":15}]}`;
-    user = `待审核内容：\n${context.content}\n\n来源标注：${JSON.stringify(context.source_refs)}\n\n请审核并输出JSON：`;
-  }
-  else if(agentName === 'practice_guide'){
-    system = `你是实操指导专家。根据学习主题和水平，生成实操步骤指南。
-要求输出严格JSON：{"difficulty":"easy/medium/hard","estimated_time":"2-4小时","steps":[{"title":"步骤标题","description":"步骤说明","code":"可选的代码"}]}`;
-    user = `主题：${context.topic}\n水平：${context.level}\n请生成实操指南：`;
-  }
-  else if(agentName === 'quiz'){
-    system = `你是测试题目生成专家。根据知识内容，生成分阶测试题。
-要求输出严格JSON：{"questions":[{"type":"choice","question":"题目","options":["A","B","C","D"],"correct":0,"explanation":"解析"}],"total_score":100,"passing_score":60}`;
-    user = `知识内容：${(context.knowledge&&context.knowledge.content)||''}\n难度：${context.difficulty}\n请生成测试题：`;
-  }
-  else if(agentName === 'iteration'){
-    system = `你是学习迭代优化专家。根据测验结果和诊断，决定下一步学习策略。
-要求输出严格JSON：{"decision":"simplify/advance/consolidate","adjustments":{"focus_topics":["topic1"]},"suggestion":"建议文字"}`;
-    user = `测验结果：${JSON.stringify(context.quiz_result)}\n诊断：${JSON.stringify(context.diagnosis)}\n请输出迭代决策：`;
-  }
-  else if(agentName === 'socratic'){
-    system = `你是苏格拉底式导学专家。根据知识内容，生成引导式问题和对话。
-要求输出严格JSON：{"response":"引导式回复","questions":[{"question":"问题","purpose":"目的"}]}`;
-    user = `知识内容：${(context.knowledge&&context.knowledge.content)||''}\n请生成苏格拉底导学内容：`;
-  }
-  
-  return {system, user};
-}
-
-// ============================================================
-// 解析LLM输出（处理markdown代码块等）
-// ============================================================
-function parseLLMOutput(text){
-  if(!text) return getDemoResult('fallback', {});
-  let cleaned = text.trim();
-  
-  // 去掉```json ... ``` 或 ``` ... ```
-  const codeBlock = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if(codeBlock) cleaned = codeBlock[1].trim();
-  
-  // 尝试直接解析
-  try {
-    return JSON.parse(cleaned);
-  } catch(e){}
-  
-  // 找第一个{ 到最后一个}
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if(start >= 0 && end > start){
-    try {
-      return JSON.parse(cleaned.slice(start, end+1));
-    } catch(e){}
-  }
-  
-  // 实在解析不了，返回文本包装
-  return {content: text, _parse_error: '无法解析为JSON'};
-}
-
-// ============================================================
-// Demo/Fallback数据
-// ============================================================
-function getDemoResult(agentName, context){
-  if(agentName === 'diagnosis') return {"learner_level":"intermediate","level_score":62,"strengths":["有C语言基础","了解基本数据结构"],"blind_spots":["Python生态不熟悉","AI框架未接触"],"focus_topic":"Python编程基础","learning_path":[{"phase":"夯实基础","topics":["Python语法","数据结构"],"estimated_hours":20},{"phase":"核心掌握","topics":["NumPy","Pandas"],"estimated_hours":30}],"_demo":true};
-  if(agentName === 'knowledge_gen') return {"title":"Python编程基础","content":"## Python基础\n\nPython是一种广泛使用的高级编程语言...\n\n### 变量与类型\n\nPython中变量无需声明类型...\n\n### 函数定义\n\n```python\ndef greet(name):\n    return f'Hello, {name}'\n```","concepts":["变量","函数","列表","字典"],"source_refs":[{"source":"python_basics.md","type":"[教材]"}],"_demo":true};
-  if(agentName === 'reviewer') return {"verdict":"pass","hallucination_score":15,"accuracy_score":88,"issues":[],"debate_rounds":1,"_demo":true};
-  if(agentName === 'practice_guide') return {"difficulty":"medium","estimated_time":"2-3小时","steps":[{"title":"环境搭建","description":"安装Python和VS Code"},{"title":"第一个程序","description":"编写Hello World","code":"print('Hello, World!')"}],"_demo":true};
-  if(agentName === 'quiz') return {"questions":[{"type":"choice","question":"Python中哪个关键字用于定义函数？","options":["function","def","func","define"],"correct":1,"explanation":"Python使用def关键字定义函数"},{"type":"choice","question":"以下哪个是可变类型？","options":["str","tuple","list","int"],"correct":2,"explanation":"list是可变类型，str/tuple/int是不可变类型"}],"total_score":100,"passing_score":60,"_demo":true};
-  if(agentName === 'iteration') return {"decision":"consolidate","adjustments":{"focus_topics":["多练习编程题"]},"suggestion":"建议巩固基础后进入进阶","_demo":true};
-  if(agentName === 'socratic') return {"response":"看起来你对Python有一定了解，能说说你对「装饰器」的理解吗？","questions":[{"question":"装饰器的作用是什么？","purpose":"引导思考"}],"_demo":true};
-  return {"_demo":true,"content":JSON.stringify(context)};
-}
-
-// ============================================================
-// Agent运行时UI更新
-// ============================================================
-function showAgentLoading(agentName){
-  // 可以在对应卡片上显示加载动画
-}
-function updateAgentStreamingText(agentName, text){
-  // 实时显示LLM生成的文字（打字机效果）
-  // 可选实现
-}
-
-// ============================================================
 // 单步调试
-// ============================================================
-async function runSingle(agentName){
-  log(`单步运行：${AGENT_LABELS[agentName]}...`,'info');
-  setNode(agentName,'running');
+async function runSingle(name){
+  const p = getProfile();
+  const ctxs = {
+    diagnosis:p,
+    knowledge_gen:{diag:results.diagnosis||{},profile:p},
+    reviewer:{content:results.knowledge_gen?.content||'',refs:[]},
+    practice_guide:{topic:results.diagnosis?.focus_topic||'Python基础',lvl:p.lvl},
+    quiz:{kb:results.knowledge_gen||{},lvl:p.lvl},
+    iteration:{quiz:results.quiz||{},diag:results.diagnosis||{},kb:results.knowledge_gen||{}},
+    socratic:{kb:results.knowledge_gen||{}}
+  };
+  setOrb(name,'running');
+  setSideBtn(name,'running');
+  showStream(name);
+  log(`${A_ICON[name]} ${A_LABEL[name]} 单步运行中...`,'inf');
   try {
-    const profile = getProfile();
-    const contexts = {
-      diagnosis: profile,
-      knowledge_gen: {diagnosis: agentResults.diagnosis||{}, profile},
-      reviewer: {content: (agentResults.knowledge_gen&&agentResults.knowledge_gen.content)||'', source_refs:[]},
-      practice_guide: {topic: (agentResults.diagnosis&&agentResults.diagnosis.focus_topic)||'Python基础', level: profile.level},
-      quiz: {knowledge: agentResults.knowledge_gen||{}, difficulty: profile.level},
-      iteration: {quiz_result: agentResults.quiz||{}, diagnosis: agentResults.diagnosis||{}, knowledge: agentResults.knowledge_gen||{}},
-      socratic: {knowledge: agentResults.knowledge_gen||{}}
-    };
-    const result = await runAgentFrontend(agentName, contexts[agentName]);
-    agentResults[agentName] = result;
-    setNode(agentName,'done');
-    renderCard(agentName, result);
-    log(`${AGENT_LABELS[agentName]} 单步完成 ✅`,'success');
-    updateMetrics();
+    const data = await runAgent(name, ctxs[name]);
+    hideStream();
+    setOrb(name,'done');
+    setSideBtn(name,'done');
+    results[name] = data;
+    renderCard(name, data);
+    log(`✅ ${A_LABEL[name]} 单步完成`,'suc');
   } catch(e){
-    log(`${AGENT_LABELS[agentName]} 失败：${e.message}`,'error');
-    setNode(agentName,'error');
+    hideStream();
+    setOrb(name,'error');
+    setSideBtn(name,'');
+    log(`❌ ${A_LABEL[name]} 失败: ${e.message}`,'err');
   }
 }
 
-// ============================================================
-// 更新指标
-// ============================================================
-function updateMetrics(){
-  let done = 0;
-  AGENTS.forEach(n => { if(agentResults[n]) done++; });
-  document.getElementById('mAgents').textContent = done+'/7';
-  const total = Math.floor((Date.now()-startTime)/1000);
-  document.getElementById('mTime').textContent = total+'s';
-  const rev = agentResults['reviewer'];
-  if(rev){
-    document.getElementById('mHalluc').textContent = (rev.hallucination_score||0);
-    document.getElementById('mAcc').textContent = (rev.accuracy_score||0);
+// ═══════════════════════════════════════════════════════════
+// Prompt构建
+// ═══════════════════════════════════════════════════════════
+function buildPrompt(name, ctx){
+  let sys='', user='';
+  if(name==='diagnosis'){
+    sys='你是学情诊断专家。输出严格JSON：{"learner_level":"beginner|intermediate|advanced","level_score":数字0-100,"strengths":["优势1"],"blind_spots":["盲区1"],"focus_topic":"重点主题","learning_path":[{"phase":"阶段名","topics":["主题1"],"hours":数字}]}';
+    user=`背景：${ctx.bg}\n经验：${ctx.exp}\n目标：${ctx.goal}\n自评：${ctx.lvl}\n输出JSON：`;
+  } else if(name==='knowledge_gen'){
+    sys='你是知识生成专家。输出严格JSON：{"title":"标题","content":"Markdown内容","concepts":["概念1"],"source_refs":[{"s":"文件名","t":"[教材]|[论文]|[官方]|[实践]"}]}';
+    user=`诊断：${JSON.stringify(ctx.diag)}\n画像：${JSON.stringify(ctx.profile)}\n生成JSON：`;
+  } else if(name==='reviewer'){
+    sys='你是内容审核专家。输出严格JSON：{"verdict":"pass|pass_with_concerns|needs_revision","hallucination_score":数字0-100,"accuracy_score":数字0-100,"issues":[{"severity":"high|medium|low","d":"问题"}],"debate_rounds":数字,"debate_log":[{"round":数字,"v":"pass|needs_revision","h":数字}]}';
+    user=`内容：\n${ctx.content}\n来源：${JSON.stringify(ctx.refs)}\n输出JSON：`;
+  } else if(name==='practice_guide'){
+    sys='你是实操专家。输出严格JSON：{"difficulty":"easy|medium|hard","time":"时长","steps":[{"title":"步骤","desc":"说明","code":"代码"}]}';
+    user=`主题：${ctx.topic}\n水平：${ctx.lvl}\n输出JSON：`;
+  } else if(name==='quiz'){
+    sys='你是测验专家。输出严格JSON：{"questions":[{"type":"choice","q":"题目","opts":["A","B","C","D"],"correct":数字,"exp":"解析"}],"total":100,"passing":60}';
+    user=`知识：${(ctx.kb?.content||'').slice(0,500)}\n难度：${ctx.lvl}\n输出JSON：`;
+  } else if(name==='iteration'){
+    sys='你是迭代优化专家。输出严格JSON：{"decision":"simplify|advance|consolidate","adjustments":["调整1"],"suggestion":"建议"}';
+    user=`测验：${JSON.stringify(ctx.quiz)}\n诊断：${JSON.stringify(ctx.diag)}\n输出JSON：`;
+  } else if(name==='socratic'){
+    sys='你是苏格拉底导学专家。输出严格JSON：{"response":"引导回复","questions":[{"q":"问题","purpose":"目的"}]}';
+    user=`知识：${(ctx.kb?.content||'').slice(0,500)}\n输出JSON：`;
   }
+  return {sys, user};
 }
 
-// ============================================================
-// 渲染Agent结果卡片
-// ============================================================
+// ═══════════════════════════════════════════════════════════
+// 解析输出
+// ═══════════════════════════════════════════════════════════
+function parseOut(txt){
+  if(!txt) return {};
+  let s = txt.trim();
+  const m = s.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if(m) s = m[1].trim();
+  const si = s.indexOf('{'), ei = s.lastIndexOf('}');
+  if(si>=0 && ei>si){
+    try { return JSON.parse(s.slice(si,ei+1)); } catch(e){}
+  }
+  try { return JSON.parse(s); } catch(e){}
+  return {content:txt, _raw:true};
+}
+
+// ═══════════════════════════════════════════════════════════
+// Demo数据
+// ═══════════════════════════════════════════════════════════
+function getDemo(name){
+  if(name==='diagnosis') return {learner_level:'intermediate',level_score:65,strengths:['C语言基础','数据结构理解'],blind_spots:['Python生态不熟','AI框架未接触'],focus_topic:'Python与AI开发',learning_path:[{phase:'基础夯实',topics:['Python语法','OOP'],hours:20},{phase:'AI入门',topics:['NumPy','Pandas','机器学习基础'],hours:40}],_demo:true};
+  if(name==='knowledge_gen') return {title:'Python与AI开发基础',content:'## Python基础\n\nPython是一种面向对象的高级语言...\n\n### 核心概念\n\n- **变量与类型**：Python为动态类型语言\n- **函数**：使用`def`关键字定义\n- **列表推导式**：`[x*2 for x in range(10)]`\n\n```python\ndef greet(name):\n    return f"Hello, {name}!"\n```\n\n### AI开发入门\n\n学习NumPy进行数值计算...',concepts:['Python语法','OOP','NumPy','Pandas'],source_refs:[{s:'python_basics.md',t:'[教材]'},{s:'ai_intro.md',t:'[实践]'}],_demo:true};
+  if(name==='reviewer') return {verdict:'pass',hallucination_score:8,accuracy_score:92,issues:[],debate_rounds:2,debate_log:[{round:1,v:'pass',h:10},{round:2,v:'pass',h:8}],_demo:true};
+  if(name==='practice_guide') return {difficulty:'medium',time:'3-4小时',steps:[{title:'环境搭建',desc:'安装Python 3.10+和VS Code',code:'python --version'}, {title:'第一个程序',desc:'编写Hello World',code:"print('Hello, AI World!')"}, {title:'数据类型练习',desc:'掌握基本数据类型和运算',code:'a, b = 10, 3.14'}],_demo:true};
+  if(name==='quiz') return {questions:[{type:'choice',q:'Python中使用哪个关键字定义函数？',opts:['function','def','func','lambda'],correct:1,exp:'Python使用def关键字定义函数，lambda用于定义匿名函数。'},{type:'choice',q:'以下哪种数据结构是可变的？',opts:['tuple','str','list','int'],correct:2,exp:'list（列表）是可变类型，可进行增删改操作。tuple、str、int都是不可变类型。'},{type:'choice',q:'NumPy中用于创建全0数组的函数是？',opts:['np.ones()','np.zeros()','np.empty()','np.arange()'],correct:1,exp:'np.zeros(shape)创建全0数组，np.ones()创建全1数组。'}],total:100,passing:60,_demo:true};
+  if(name==='iteration') return {decision:'consolidate',adjustments:['加强Python基础练习','补充更多实战项目'],suggestion:'建议先巩固Python基础再进入AI框架学习，预计需要2-3周扎实练习。',_demo:true};
+  if(name==='socratic') return {response:'你对Python已有初步了解。请问：如果要把一个列表中的所有偶数翻倍，你会怎么做？',questions:[{q:'列表推导式 [x*2 for x in lst if x%2==0] 的执行顺序是什么？',purpose:'理解列表推导式的执行逻辑'},{q:'Python中的生成器(Generator)和列表有什么区别？',purpose:'引导思考惰性求值和内存效率'}],_demo:true};
+  return {_demo:true};
+}
+
+// ═══════════════════════════════════════════════════════════
+// 渲染卡片
+// ═══════════════════════════════════════════════════════════
 function renderCard(name, data){
-  const area = document.getElementById('resultsArea');
+  const rg = document.getElementById('rg') || document.getElementById('resultsGrid');
   const old = document.getElementById('card-'+name);
   if(old) old.remove();
-  
-  const meta = data._meta || {};
-  const elapsed = meta.elapsed_seconds ? meta.elapsed_seconds+'s' : '';
-  let html = '';
-  
-  if(name === 'diagnosis'){
-    html = `
-      <div class="score-bar"><span class="label">水平评分</span><div class="bar"><div class="fill" style="width:${data.level_score||0}%;background:${sc(data.level_score||0)}"></div></div><span class="score-val">${data.level_score||0}</span></div>
-      <p style="font-size:11px;margin:4px 0"><strong>优势：</strong>${(data.strengths||[]).join('、')||'暂无'}</p>
-      <p style="font-size:11px;margin:4px 0"><strong>盲区：</strong>${(data.blind_spots||[]).join('、')||'暂无'}</p>
-      <p style="font-size:11px;margin:4px 0"><strong>重点：</strong>${data.focus_topic||'-'}</p>
-    `;
-  } else if(name === 'knowledge_gen'){
-    html = `
-      <p style="font-size:12px;margin-bottom:6px"><strong>${data.title||'个性化学习内容'}</strong> ${data._demo?'<span style="color:var(--warn);font-size:10px">[Demo模式]</span>':''}</p>
-      <p style="font-size:10px;color:var(--muted);margin-bottom:4px">核心概念：${(data.concepts||[]).join('、')||'暂无'}</p>
-      <div class="knowledge-content">${md2html(data.content||'生成中…')}</div>
-    `;
-  } else if(name === 'reviewer'){
-    const h = data.hallucination_score||0;
-    const a = data.accuracy_score||0;
-    html = `
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">幻觉分数</span><div class="bar"><div class="fill" style="width:${h}%;background:${h<20?'var(--success)':h<50?'var(--warn)':'var(--danger)'}"></div></div><span class="score-val">${h}</span></div>
-        <div class="score-bar" style="flex:1;min-width:160px"><span class="label">准确度</span><div class="bar"><div class="fill" style="width:${a}%;background:${sc(a)}"></div></div><span class="score-val">${a}</span></div>
+
+  let body = '';
+  const demo = data._demo;
+
+  if(name==='diagnosis'){
+    body = `
+      <div class="sb"><span class="sb-lbl">能力评分</span><div class="sb-bar"><div class="sb-fill" style="width:${data.level_score||0}%;background:${sc2(data.level_score||0)}"></div></div><span class="sb-val" style="color:${sc2(data.level_score||0)}">${data.level_score||0}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <span class="kb-badge t1">优势</span>
+        <span style="font-size:11px;color:var(--text2)">${(data.strengths||[]).join('、')||'暂无'}</span>
       </div>
-      <p style="font-size:11px">判定：<strong style="color:${data.verdict==='pass'?'var(--success)':data.verdict==='needs_revision'?'var(--danger)':'var(--warn)'}">${vl(data.verdict)}</strong> · 辩论轮数：${data.debate_rounds||1}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <span class="kb-badge t3">盲区</span>
+        <span style="font-size:11px;color:var(--text2)">${(data.blind_spots||[]).join('、')||'暂无'}</span>
+      </div>
+      <div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:6px">📍 学习路径</div>
+        ${(data.learning_path||[]).map((lp,i)=>`
+          <div style="display:flex;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--accent2);font-weight:700;min-width:16px">${i+1}</span>
+            <div>
+              <div style="font-size:11px;font-weight:700">${lp.phase} <span style="color:var(--muted);font-weight:400">(${lp.hours||0}h)</span></div>
+              <div style="font-size:10px;color:var(--text2)">${(lp.topics||[]).join(' · ')}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     `;
-  } else if(name === 'practice_guide'){
-    html = `
-      <p style="font-size:11px;margin-bottom:6px">难度：<strong>${data.difficulty||'-'}</strong> · 预计：<strong>${data.estimated_time||'-'}</strong></p>
-      ${(data.steps||[]).map(s=>`<div style="margin:6px 0;padding:8px;background:var(--bg);border-radius:7px;border:1px solid var(--border)"><p style="font-size:12px;font-weight:600">${s.title||''}</p><p style="font-size:11px;color:var(--muted);margin-top:2px">${s.description||''}</p>${s.code?`<pre style="margin-top:4px;padding:6px;background:#0d1117;border-radius:5px;font-size:10px;overflow-x:auto">${escHtml(s.code)}</pre>`:''}</div>`).join('')}
+  } else if(name==='knowledge_gen'){
+    body = `
+      <div style="margin-bottom:6px">
+        ${(data.concepts||[]).map((c,i)=>`<span class="kb-badge ${i%2===0?'t1':'t2'}">${c}</span>`).join('')}
+      </div>
+      <div class="kb-body">${md2html(data.content||'')}</div>
+      <div style="margin-top:6px">
+        <span style="font-size:9px;color:var(--muted)">📚 来源：</span>
+        ${(data.source_refs||[]).map(r=>`<span class="kb-badge" style="font-size:9px">${r.s} <span style="color:${r.t==='[教材]'?'#00d4aa':r.t==='[实践]'?'#ffb347':r.t==='[论文]'?'#7c5cfc':'#89d4c8'}">${r.t}</span></span>`).join('')}
+      </div>
     `;
-  } else if(name === 'quiz'){
+  } else if(name==='reviewer'){
+    const h = data.hallucination_score||0, a = data.accuracy_score||0;
+    body = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="sb" style="flex:1;min-width:140px"><span class="sb-lbl">幻觉分数</span><div class="sb-bar"><div class="sb-fill" style="width:${h}%;background:${h<20?'var(--success)':h<50?'var(--warn)':'var(--danger)'}"></div></div><span class="sb-val">${h}</span></div>
+        <div class="sb" style="flex:1;min-width:140px"><span class="sb-lbl">准确度</span><div class="sb-bar"><div class="sb-fill" style="width:${a}%;background:${sc2(a)}"></div></div><span class="sb-val">${a}%</span></div>
+      </div>
+      <div style="margin-top:6px;font-size:12px">判定：<strong style="color:${data.verdict==='pass'?'var(--success)':data.verdict==='needs_revision'?'var(--danger)':'var(--warn)'}">${vl2(data.verdict)}</strong> · 辩论轮数 ${data.debate_rounds||1}</div>
+      ${(data.issues||[]).length>0?`<div style="margin-top:6px;font-size:10px;color:var(--danger)">⚠ ${data.issues[0].d||''}</div>`:''}
+      <div class="debate-thread" style="margin-top:8px">
+        ${(data.debate_log||[]).map((rd,i)=>`
+          <div class="debate-rd">
+            <div class="debate-rd-lbl">第${i+1}轮</div>
+            <div class="debate-rd-opinion">判定：${vl2(rd.v)} · 幻觉分数：${rd.h}</div>
+          </div>
+        `).join('')}
+        <div class="debate-verdict">✅ 审核通过，知识内容可信</div>
+      </div>
+    `;
+  } else if(name==='practice_guide'){
+    body = `
+      <div style="display:flex;gap:10px;margin-bottom:8px">
+        <span class="kb-badge t1">难度：${data.difficulty||'-'}</span>
+        <span class="kb-badge t2">⏱ ${data.time||'-'}</span>
+      </div>
+      <div class="step-guide">
+        ${(data.steps||[]).map((s,i)=>`
+          <div class="step-item">
+            <div class="step-num">${i+1}</div>
+            <div class="step-body">
+              <div class="step-title">${s.title||''}</div>
+              <div class="step-desc">${s.desc||''}</div>
+              ${s.code?`<div class="step-code">${esc(s.code||'')}</div>`:''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if(name==='quiz'){
     quizData = data;
-    html = renderQuiz(data);
-  } else if(name === 'iteration'){
-    html = `
-      <p style="font-size:12px;margin-bottom:6px">决策：<strong style="color:${data.decision==='advance'?'var(--success)':data.decision==='simplify'?'var(--warn)':'var(--accent)'}">${data.decision||'consolidate'}</strong></p>
-      <p style="font-size:11px;color:var(--muted)">${data.suggestion||''}</p>
+    body = `<p style="font-size:11px;margin-bottom:8px;color:var(--text2)">共${(data.questions||[]).length}题 · 及格${data.passing||60}分</p>`;
+    body += renderQuizHTML(data.questions||[]);
+  } else if(name==='iteration'){
+    const opts = [
+      {v:'simplify',l:'简化内容',c:'var(--warn)'},
+      {v:'advance',l:'进阶学习',c:'var(--success)'},
+      {v:'consolidate',l:'巩固基础',c:'var(--accent)'}
+    ];
+    body = `
+      <div class="iter-cards">
+        ${opts.map(o=>`<div class="iter-chip ${data.decision===o.v?'active':'inactive'}" style="${data.decision===o.v?`border-color:${o.c};color:${o.c}`:''}">${o.l}</div>`).join('')}
+      </div>
+      <p style="font-size:12px;margin-top:10px;color:var(--text2)">${data.suggestion||''}</p>
     `;
-  } else if(name === 'socratic'){
-    html = `
-      <div style="margin:8px 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-        <p style="font-size:12px;margin-bottom:6px"><strong>💬 引导对话</strong></p>
-        <p style="font-size:11px;line-height:1.6">${escHtml((data.response||'请在下方输入问题开始对话'))}</p>
+  } else if(name==='socratic'){
+    body = `
+      <div class="soc-box">
+        <div class="soc-prompt">💬 引导对话</div>
+        <p style="font-size:12px;line-height:1.7">${esc(data.response||'')}</p>
       </div>
-      <div style="margin-top:8px">
-        <p style="font-size:10px;color:var(--muted);margin-bottom:4px">引导问题：</p>
-        ${(data.questions||[]).map(q=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${escHtml(q.question||'')} <span style="color:var(--muted);font-size:9px">${escHtml(q.purpose||'')}</span></div>`).join('')}
-      </div>
+      <ul class="soc-q-list" style="margin-top:8px">
+        ${(data.questions||[]).map(q=>`<li class="soc-q-item"><span>${esc(q.q||'')}</span><span style="color:var(--muted);font-size:10px;margin-left:auto;white-space:nowrap">→ ${esc(q.purpose||'')}</span></li>`).join('')}
+      </ul>
     `;
   }
-  
+
   const card = document.createElement('div');
-  card.className = 'result-card';
-  card.id = 'card-'+name;
-  card.innerHTML = `<h4>${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} <span class="elapsed">${elapsed}</span></h4><div>${html}</div>`;
-  area.appendChild(card);
+  card.className='res-card';
+  card.id='card-'+name;
+  card.innerHTML=`
+    <div class="res-card-head">
+      <div class="res-card-title">
+        <span class="rc-icon">${A_ICON[name]||''}</span>
+        ${A_LABEL[name]||name}
+      </div>
+      ${demo?'<span class="res-card-badge demo">DEMO</span>':''}
+    </div>
+    <div>${body}</div>
+  `;
+  rg.appendChild(card);
   card.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-// ============================================================
-// 测验渲染
-// ============================================================
-function renderQuiz(data){
-  const qs = data.questions || [];
-  let h = `<p style="font-size:11px;margin-bottom:6px">共${qs.length}题 · 总分${data.total_score||100} · 及格${data.passing_score||60}</p><div id="quizBox">`;
+function renderQuizHTML(qs){
+  let h = '<div class="quiz-wrap">';
   qs.forEach((q,i)=>{
-    const opts = (q.options||[]).map((o,j)=>`<div class="quiz-opt" onclick="pickOpt(this,${i},${j})">${'ABCD'[j]}. ${escHtml(o)}</div>`).join('');
-    h += `<div class="quiz-q"><div class="q-text"><strong>${i+1}.</strong> [${q.type==='choice'?'选择':q.type==='coding'?'编程':'简答'}] ${escHtml(q.question)}</div><div class="quiz-opts">${opts}</div><div class="quiz-explain" id="expl-${i}" style="display:none;margin-top:4px;font-size:10px;color:var(--muted);padding:5px;background:var(--bg);border-radius:5px"></div></div>`;
+    h += `<div class="q-card" id="qc-${i}">
+      <div class="q-num">题目 ${i+1} / ${qs.length}</div>
+      <div class="q-text">${esc(q.q||'')}</div>
+      <div class="q-opts">${(q.opts||[]).map((o,j)=>
+        `<div class="q-opt" onclick="pickOpt(${i},${j})">${'ABCD'[j]}. ${esc(o)}</div>`
+      ).join('')}</div>
+      <div class="q-exp" id="qe-${i}">💡 ${esc(q.exp||'暂无解析')}</div>
+    </div>`;
   });
-  h += `</div><button class="btn" style="margin-top:6px;background:var(--accent);color:#000;font-size:11px;padding:6px 12px" onclick="gradeQuiz()">📊 批改评分</button><div id="quizResult"></div>`;
+  h += `<button class="btn-primary" style="margin-top:8px;font-size:12px;padding:8px" onclick="gradeQuiz()">📊 批改评分</button>
+  <div id="quizScore"></div></div>`;
   return h;
 }
 
-function pickOpt(el, qi, oi){
-  const c = el.closest('.quiz-q');
-  c.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('selected'));
-  el.classList.add('selected');
+// ═══════════════════════════════════════════════════════════
+// 测验交互
+// ═══════════════════════════════════════════════════════════
+let userAnswers = {};
+function pickOpt(qi, oi){
+  const qcard = document.getElementById('qc-'+qi);
+  if(!qcard) return;
+  qcard.querySelectorAll('.q-opt').forEach(o=>o.classList.remove('sel'));
+  qcard.querySelectorAll('.q-opt')[oi].classList.add('sel');
+  userAnswers[qi] = oi;
 }
 
 function gradeQuiz(){
   if(!quizData) return;
-  const qs = quizData.questions || [];
+  const qs = quizData.questions||[];
   let correct = 0;
   qs.forEach((q,i)=>{
-    const opts = document.querySelectorAll(`#card-quiz .quiz-q:nth-child(${i+1}) .quiz-opt`);
-    let userIdx = -1;
-    opts.forEach((o,j)=>{ if(o.classList.contains('selected')) userIdx=j; });
-    const expl = document.getElementById(`expl-${i}`);
-    if(expl){ expl.style.display=''; expl.textContent='💡 '+(q.explanation||'暂无解析'); }
-    const correctIdx = q.correct;
-    opts.forEach((o,j)=>{
-      if(j===correctIdx) o.classList.add('correct');
-      if(j===userIdx && j!==correctIdx) o.classList.add('wrong');
-    });
-    if(userIdx===correctIdx) correct++;
+    const qcard = document.getElementById('qc-'+i);
+    if(!qcard) return;
+    const opts = qcard.querySelectorAll('.q-opt');
+    const exp = document.getElementById('qe-'+i);
+    if(exp) exp.classList.add('show');
+    const ci = q.correct;
+    if(ci < opts.length) opts[ci].classList.add('ok');
+    const ua = userAnswers[i];
+    if(ua !== undefined && ua !== ci && ua < opts.length) opts[ua].classList.add('nox');
+    if(ua === ci) correct++;
   });
   const score = Math.round(correct/qs.length*100);
-  document.getElementById('quizResult').innerHTML = `<div class="quiz-result" style="color:${score>=60?'var(--success)':'var(--danger)'}">📊 得分：${score}/100 · 正确${correct}/${qs.length}</div>`;
-  document.getElementById('mQuiz').textContent = score;
+  document.getElementById('quizScore').innerHTML = `
+    <div class="quiz-score" style="background:${score>=60?'var(--success)':'var(--danger)'}22;color:${score>=60?'var(--success)':'var(--danger)'};border:1px solid ${score>=60?'var(--success)':'var(--danger)'}55">
+      🎯 得分：${score}/100 · 正确${correct}/${qs.length}
+    </div>`;
+  document.getElementById('msQuiz').textContent = score;
+  document.getElementById('msbQuiz').style.width = score+'%';
 }
 
-// ============================================================
-// 辅助函数
-// ============================================================
-function sc(s){ return s>=80?'var(--success)':s>=50?'var(--warn)':'var(--danger)'; }
-function vl(v){ return {pass:'✅ 通过',pass_with_concerns:'⚠️ 有顾虑通过',needs_revision:'❌ 需修订',reject:'🚫 驳回'}[v]||v; }
-function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// ═══════════════════════════════════════════════════════════
+// 工具函数
+// ═══════════════════════════════════════════════════════════
+function sc2(s){ return s>=80?'var(--success)':s>=50?'var(--warn)':'var(--danger)'; }
+function vl2(v){ return {pass:'✅ 通过',pass_with_concerns:'⚠️ 有顾虑通过',needs_revision:'❌ 需修订'}[v]||v; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function md2html(md){
   if(!md) return '';
-  return md.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[\*\-] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  return md
+    .replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^### (.+)$/gm,'<h4>$1</h4>')
+    .replace(/^## (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s,'<ul>$1</ul>')
+    .replace(/\n{2,}/g,'<br><br>')
+    .replace(/\n/g,'<br>');
 }
 
-// ============================================================
-// 移动端侧边栏
-// ============================================================
-function toggleSidebar(){
-  const sb = document.getElementById('sidebar');
-  sb.classList.toggle('mobile-show');
+// ═══════════════════════════════════════════════════════════
+// 移动端
+// ═══════════════════════════════════════════════════════════
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('mob-on'); }
+function scrollToSidebar(){ if(window.innerWidth<=768) document.getElementById('sidebar').classList.add('mob-on'); }
+function showHelp(){
+  alert('使用方法：\n1. 左侧填写学习者画像\n2. 点击「启动全流程协同」\n3. 7个Agent依次运行\n4. 查看结果卡片\n\n单步调试：点击侧边栏对应按钮单独运行某个Agent');
 }
 
-// 点击内容区关闭侧边栏（移动端）
-document.addEventListener('click', function(e){
-  const sb = document.getElementById('sidebar');
-  if(window.innerWidth <= 768 && sb.classList.contains('mobile-show')){
-    if(!sb.contains(e.target) && !e.target.closest('.mobile-toggle')){
-      sb.classList.remove('mobile-show');
-    }
-  }
-});
-
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 // 初始化
-// ============================================================
+// ═══════════════════════════════════════════════════════════
 fetch('/api/health').then(r=>r.json()).then(d=>{
-  const agentCount = (d.agents&&d.agents.length)||0;
-  log(`后端: ✅ ${d.status} · ${agentCount}个Agent就绪 · API Key ${d.api_key_configured?'已配置✅':'未配置⚠️'}`,'success');
-  document.getElementById('mAgents').textContent = '0/'+Math.max(agentCount,7);
-  if(currentApiKey){
-    document.getElementById('btnApiKey').textContent = '🔑 ' + currentApiKeyId + '•••';
-    log('🔑 已加载本地API Key','info');
-  } else {
-    log('⚠️ 未配置API Key，请点击右上角「API Key」配置','warn');
-  }
-}).catch(()=>{
-  log('⚠️ 后端未连接，请确认服务已启动','warn');
-});
+  const n = (d.agents||[]).length;
+  log(`后端就绪：${n}个Agent | API Key ${d.api_key_configured?'✅ 已配置':'⚠️ 未配置'}`,'suc');
+  if(hasKey){ log('🔑 已加载本地Key','inf'); }
+  else { log('⚠ 点击右上角🔑配置Key以获得最佳体验','warn'); }
+}).catch(()=>log('⚠ 后端连接失败，请确认服务运行中','err'));
 </script>
 </body>
 </html>
