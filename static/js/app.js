@@ -811,15 +811,15 @@ function renderCard(name, data){
   card.className = 'result-card';
   card.id = 'card-'+name;
   card.innerHTML = `
-    <h4 onclick="toggleCard('${name}')">${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} ${isDemo?'<span style="font-size:9px;background:var(--warn);color:#000;padding:2px 8px;border-radius:8px;margin-left:6px">DEMO</span>':''} <span style="font-size:10px;color:var(--muted)">${data._meta?.model||''}</span><span class="toggle-icon">▼</span></h4>
+    <h4 data-action="toggleCard" data-args="${name}">${AGENT_ICONS[name]||''} ${AGENT_LABELS[name]||name} ${isDemo?'<span style="font-size:9px;background:var(--warn);color:#000;padding:2px 8px;border-radius:8px;margin-left:6px">DEMO</span>':''} <span style="font-size:10px;color:var(--muted)">${data._meta?.model||''}</span><span class="toggle-icon">▼</span></h4>
     <div class="card-body">
     <div>${body}</div>
     <div class="card-actions">
-      <button onclick="copyResult('${name}')">📋 复制JSON</button>
-      ${name==='socratic'?'<button onclick="exportAllResults()">📦 导出全部</button>':''}
-      ${name==='knowledge_gen'?'<button onclick="copyCardContent(\'card-${name}\')">📄 复制内容</button>':''}
+      <button data-action="copyResult" data-args="${name}">📋 复制JSON</button>
+      ${name==='socratic'?'<button data-action="exportAllResults">📦 导出全部</button>':''}
+      ${name==='knowledge_gen'?'<button data-action="copyCardContent" data-args="card-${name}">📄 复制内容</button>':''}
     </div>
-    ${name==='socratic'?'<div id="socraticChat" style="margin-top:10px;max-height:300px;overflow-y:auto"></div><div class="chat-input-row"><input id="socraticInput" placeholder="输入你的回答，继续对话..." onkeydown="if(event.key===\'Enter\')sendSocraticChat()"><button onclick="sendSocraticChat()">发送</button></div>':''}
+    ${name==='socratic'?'<div id="socraticChat" style="margin-top:10px;max-height:300px;overflow-y:auto"></div><div class="chat-input-row"><input id="socraticInput" placeholder="输入你的回答，继续对话..." onkeydown="if(event.key===\'Enter\')sendSocraticChat()"><button data-action="sendSocraticChat">发送</button></div>':''}
     </div>
   `;
   const rg2 = document.getElementById('rg');
@@ -835,12 +835,12 @@ function renderQuizHTML(qs){
       <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:4px">题目 ${i+1}/${qs.length}</div>
       <div style="font-size:12px;margin-bottom:8px">${esc(q.question||q.q||'')}</div>
       <div>${(q.options||q.opts||[]).map((o,j)=>
-        `<div onclick="pickOpt(${i},${j})" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:4px;font-size:11px;cursor:pointer;transition:all .2s" class="qopt-${i}">${'ABCD'[j]}. ${esc(o)}</div>`
+        `<div data-action="pickOpt" data-args="${i},${j}" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:4px;font-size:11px;cursor:pointer;transition:all .2s" class="qopt-${i}">${'ABCD'[j]}. ${esc(o)}</div>`
       ).join('')}</div>
       <div id="qe-${i}" style="display:none;margin-top:6px;font-size:10px;color:var(--accent);background:rgba(0,212,170,.08);padding:6px 10px;border-radius:7px">💡 ${esc(q.explanation||q.exp||'')}</div>
     </div>`;
   });
-  h += `<button class="btn btn-primary" style="margin-top:8px" onclick="gradeQuiz()">📊 批改评分</button><div id="quizScore"></div></div>`;
+  h += `<button class="btn btn-primary" style="margin-top:8px" data-action="gradeQuiz">📊 批改评分</button><div id="quizScore"></div></div>`;
   return h;
 }
 
@@ -1125,5 +1125,44 @@ fetch('/api/health').then(r=>r.json()).then(d=>{
 document.addEventListener('keydown', e=>{
   if(e.ctrlKey && e.key==='Enter' && !document.getElementById('btnStart').disabled){
     startPipeline();
+  }
+});
+
+// ============ Event Delegation ============
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  var action = el.dataset.action;
+  var args = el.dataset.args || '';
+  switch(action) {
+    case 'stopPipeline': stopPipeline(); break;
+    case 'singleStep': singleStep(args); break;
+    case 'toggleCard': toggleCard(el); break;
+    case 'copyResult': copyResult(args); break;
+    case 'toggleCard': toggleCard(el); break;
+    case 'exportAll': exportAll(); break;
+    case 'switchModel': switchModel(); break;
+    case 'showApiConfig': showApiConfig(); break;
+    case 'saveApiKey': saveApiKey(); break;
+    case 'closeModal': closeModal(); break;
+    case 'runSocratic': runSocratic(args); break;
+    case 'runIteration': runIteration(args); break;
+    case 'sendSocraticReply': sendSocraticReply(); break;
+    case 'toggleSidebar': toggleSidebar(); break;
+    case 'showModelModal': showModelModal(); break;
+    case 'showApiKeyModal': showApiKeyModal(); break;
+    case 'startPipeline': startPipeline(); break;
+    case 'searchKB': searchKB(); break;
+    case 'generateReport': generateReport(); break;
+    case 'runSingle': runSingle(args); break;
+    case 'closeModelModal': closeModelModal(); break;
+    case 'confirmModel': confirmModel(); break;
+    case 'skipApiKey': skipApiKey(); break;
+    case 'confirmApiKey': confirmApiKey(); break;
+    case 'exportAllResults': exportAllResults(); break;
+    case 'copyCardContent': { var cardEl = document.getElementById(args); if(cardEl) copyCardContent(cardEl); break; }
+    case 'sendSocraticChat': sendSocraticChat(); break;
+    case 'pickOpt': { var parts = args.split(','); pickOpt(parseInt(parts[0]), parseInt(parts[1])); break; }
+    case 'gradeQuiz': gradeQuiz(); break;
   }
 });
