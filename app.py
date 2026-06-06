@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="4.0.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="4.1.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
