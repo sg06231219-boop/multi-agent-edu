@@ -109,9 +109,9 @@ class IterationAgent(BaseAgent):
     
     def _fallback_iteration(self, accuracy, strategy, label, reason, error):
         adjustments = {
-            "simplify": {"difficulty_shift": -2, "focus_topics": ["基础概念复习", "关键知识点重讲"], "skip_topics": ["高级特性"], "new_approach": "用更通俗的语言和更多示例讲解"},
-            "consolidate": {"difficulty_shift": 0, "focus_topics": ["薄弱环节强化"], "skip_topics": [], "new_approach": "针对性补充练习和讲解"},
-            "advance": {"difficulty_shift": +2, "focus_topics": ["进阶技术", "实战项目"], "skip_topics": ["已掌握的基础知识"], "new_approach": "引入更高难度的概念和项目实践"},
+            "simplify": {"difficulty_shift": -2, "focus_topics": ["基础概念复习", "关键知识点重讲", "简单示例练习"], "skip_topics": ["高级特性", "底层原理"], "new_approach": "用更通俗的语言和更多示例讲解，每步附注释说明"},
+            "consolidate": {"difficulty_shift": 0, "focus_topics": ["薄弱环节强化", "易错点梳理", "综合练习"], "skip_topics": [], "new_approach": "针对性补充练习和讲解，增加知识关联图"},
+            "advance": {"difficulty_shift": +2, "focus_topics": ["进阶技术", "实战项目", "底层原理"], "skip_topics": ["已掌握的基础知识"], "new_approach": "引入更高难度的概念和项目实践，关注性能和设计模式"},
         }
         return {
             "decision": strategy,
@@ -119,9 +119,10 @@ class IterationAgent(BaseAgent):
             "reason": reason,
             "adjustments": adjustments.get(strategy, adjustments["consolidate"]),
             "next_steps": [
-                {"step": 1, "action": f"执行{label}策略", "agent": "knowledge_gen", "description": reason}
+                {"step": 1, "action": f"执行{label}策略", "agent": "knowledge_gen", "description": reason},
+                {"step": 2, "action": "生成适配内容", "agent": "practice_guide", "description": f"根据{label}策略生成对应难度的实操练习"},
             ],
-            "summary": f"正确率{accuracy:.0f}%，建议{label}",
+            "summary": f"正确率{accuracy:.0f}%，建议{label}，{reason}",
             "fallback": True,
             "error": error,
         }
