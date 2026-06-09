@@ -1,5 +1,5 @@
 /* ============================================================
-   Multi-Agent Edu v5.0 - 核心应用逻辑
+   Multi-Agent Edu v6.0 - 核心应用逻辑
    挑战杯 XH-202630 · 7-Agent协同决策可视化
    ============================================================ */
 
@@ -433,39 +433,87 @@ async function callZhipu(prompt, test){
 function buildPrompts(agentName, context){
   const p = getProfile();
   if(agentName==='diagnosis') return {
-    system:`你是学情诊断专家。输入学习者背景，输出JSON：
-{"learner_level":"beginner|intermediate|advanced","level_score":<0-100>,"strengths":[""],"blind_spots":[""],"focus_topic":"","learning_path":[{"phase":"","topics":[""],"estimated_hours":<int>}]}`,
-    user:`背景：${p.background}\n经验：${p.experience}\n目标：${p.goal}\n自评：${p.level}\n诊断（JSON）：`
+    system:`你是学情诊断专家。根据学习者背景，精准分析知识水平、定位知识盲区、推荐个性化学习路径。
+
+输出JSON：
+{"learner_level":"beginner|intermediate|advanced","level_score":0-100,"strengths":["已有优势"],"blind_spots":["知识盲区"],"focus_topic":"最需优先学习的主题","learning_path":[{"phase":"阶段名","topics":["主题"],"estimated_hours":学时}],"summary":"50字诊断总结"}`,
+    user:`请诊断以下学习者的学情：
+- 背景：${p.background}
+- 编程经验：${p.experience}
+- 学习目标：${p.goal}
+- 自评水平：${p.level}
+
+给出详细学情诊断（JSON格式）。`
   };
   if(agentName==='knowledge_gen') return {
-    system:`你是知识生成专家。诊断：${JSON.stringify(context.diagnosis||{})}\n生成800-1500字Markdown内容，输出JSON：
-{"title":"","content":"Markdown","concepts":[""],"source_refs":[{"source":"","type":"[教材]|[官方文档]|[论文]|[实践]"}]}`,
-    user:`请生成个性化学习内容（JSON）：`
+    system:`你是AI/编程领域资深技术教育专家。基于学情诊断生成个性化学习内容。
+要求：1)内容基于知识库素材，不得编造 2)每个知识点标注来源 3)难度匹配学习者水平 4)包含概念讲解+实操示例+扩展阅读
+
+输出JSON：
+{"title":"内容标题","content":"完整学习内容(Markdown格式，800-1500字)","source_refs":[{"id":"引用编号","source":"来源文件","type":"[教材]|[官方文档]|[论文]|[实践]","relevance":"相关性"}],"concepts":["核心概念"],"examples":["实操示例"],"extensions":["扩展阅读"],"summary":"50字摘要"}`,
+    user:`学情诊断：${JSON.stringify(context.diagnosis||{})}
+知识库参考：${(context.kb_content||'暂无').slice(0,1500)}
+${context.revision_hints?'\n⚠️ 审核指出：'+JSON.stringify(context.revision_hints)+'请针对性修正。':''}
+
+请生成个性化学习内容（JSON）。`
   };
   if(agentName==='reviewer') return {
-    system:`你是内容审核专家。评分：hallucination_score 0-100，accuracy_score 0-100。输出JSON：
-{"verdict":"pass|pass_with_concerns|needs_revision|reject","hallucination_score":<int>,"accuracy_score":<int>,"issues":[{"severity":"high|medium|low","description":"","correct_info":""}],"debate_rounds":<int>,"debate_log":[{"round":1,"reviewer_verdict":"","hallucination_score":<int>}]}`,
-    user:`内容：${(context.content||'').slice(0,2000)}\n来源：${JSON.stringify(context.source_refs||[])}\n审核（JSON）：`
+    system:`你是严谨的内容审核专家。审核学习内容是否存在幻觉、不准确知识点、或与行业规范不符的内容。
+第1轮审核请仔细检查，至少找出1-2个潜在问题或改进点。评分：hallucination_score 0-100，accuracy_score 0-100。
+
+输出JSON：
+{"verdict":"pass|pass_with_concerns|needs_revision|reject","hallucination_score":0-100,"accuracy_score":0-100,"issues":[{"type":"factual_error|logical_flaw|missing_source|industry_violation","description":"问题描述","severity":"high|medium|low","suggestion":"修正建议"}],"strengths":["内容优点"],"debate_rounds":1,"debate_log":[{"round":1,"reviewer_verdict":"","hallucination_score":0}],"summary":"50字审核总结"}`,
+    user:`请审核以下学习内容：
+--- 内容 ---
+${(context.content||'').slice(0,2000)}
+--- 来源 ---
+${JSON.stringify(context.source_refs||[])}
+
+请严格评估（JSON格式）。`
   };
   if(agentName==='practice_guide') return {
-    system:`你是实操指导专家。输出JSON：
-{"difficulty":"easy|medium|hard","estimated_time":"","prerequisites":[""],"steps":[{"title":"","description":"","code":"可选代码","expected_output":""}],"tips":[""]}`,
-    user:`主题：${context.topic||'Python基础'}\n水平：${p.level}\n生成实操指南（JSON）：`
+    system:`你是实操指导专家。生成递进式实操步骤和代码练习。
+
+输出JSON：
+{"title":"实操指南标题","difficulty":"easy|medium|hard","estimated_time":"预计时间","steps":[{"step":1,"title":"步骤标题","description":"详细说明","code":"示例代码","tip":"注意事项"}],"project_idea":"综合项目建议","common_mistakes":["常见错误"],"summary":"50字总结"}`,
+    user:`主题：${context.topic||'Python基础'}
+水平：${p.level}
+
+请生成3-5步递进式实操指南（JSON格式）。`
   };
   if(agentName==='quiz') return {
-    system:`你是测试专家。3-5题选择题，输出JSON：
-{"questions":[{"type":"choice","question":"","options":["A","B","C","D"],"correct":0,"explanation":""}],"total_score":100,"passing_score":60}`,
-    user:`知识：${(context.knowledge?.content||'').slice(0,1500)}\n难度：${p.level}\n生成测试（JSON）：`
+    system:`你是测试专家。根据学习内容生成分阶测试题，覆盖不同难度。
+重要：correct字段必须是0-3的数字索引，表示正确答案在options中的位置。选择题必须有4个options。
+
+输出JSON：
+{"quiz_title":"测试标题","difficulty":"easy|medium|hard","questions":[{"id":1,"type":"choice","difficulty":"easy|medium|hard","question":"题目","options":["A选项","B选项","C选项","D选项"],"correct":0,"explanation":"答案解析","knowledge_point":"考察知识点"}],"total_score":100,"passing_score":60,"summary":"50字总结"}`,
+    user:`知识内容：${(context.knowledge?.content||'').slice(0,1500)}
+核心概念：${JSON.stringify(context.knowledge?.concepts||[])}
+难度：${p.level}
+
+请生成5道分阶测试题（2easy+2medium+1hard，JSON格式）。`
   };
   if(agentName==='iteration') return {
-    system:`你是迭代优化专家。输出JSON：
-{"decision":"simplify|advance|consolidate","adjustments":{"focus_topics":[""],"remove_topics":[""],"add_topics":[""]},"suggestion":"","next_steps":[""]}`,
-    user:`测验：${JSON.stringify(context.quiz_result||{})}\n诊断：${JSON.stringify(context.diagnosis||{})}\n迭代决策（JSON）：`
+    system:`你是迭代优化专家。根据测试反馈决定：降维解释(simplify)/巩固强化(consolidate)/进阶挑战(advance)。
+
+输出JSON：
+{"decision":"simplify|consolidate|advance","decision_label":"降维解释|巩固强化|进阶挑战","reason":"决策理由","adjustments":{"difficulty_shift":-2到+2,"focus_topics":["需重点关注"],"skip_topics":["可跳过"],"new_approach":"教学方式调整"},"next_steps":[{"step":1,"action":"具体行动","agent":"负责Agent","description":"说明"}],"summary":"50字迭代总结"}`,
+    user:`测验结果：${JSON.stringify(context.quiz_result||{})}
+学情诊断：${JSON.stringify(context.diagnosis||{})}
+已学内容：${JSON.stringify(context.knowledge?.title||'')}
+
+请做出迭代决策（JSON格式）。`
   };
   if(agentName==='socratic') return {
-    system:`你是苏格拉底导师。输出JSON：
-{"response":"","questions":[{"question":"","purpose":""}],"hint":""}`,
-    user:`知识：${(context.knowledge?.content||'').slice(0,1000)}\n苏格拉底导学（JSON）：`
+    system:`你是苏格拉底式导师。通过追问引导学习者主动思考，不直接给答案。追问有层次：理解→应用→分析→评价。
+
+输出JSON：
+{"title":"带追问的学习内容","sections":[{"content":"知识点","question":"启发式追问","hint":"思考提示","depth":"understanding|application|analysis|evaluation","follow_ups":["追问方向"]}],"reflection_prompts":["反思问题"],"response":"导学回应","questions":[{"question":"追问","purpose":"引导目的"}],"summary":"50字导学总结"}`,
+    user:`学习主题：${context.knowledge?.title||'编程基础'}
+核心概念：${JSON.stringify(context.knowledge?.concepts||[])}
+内容摘要：${(context.knowledge?.content||'').slice(0,1000)}
+
+请设计启发式追问节点（JSON格式）。`
   };
   return {system:'',user:''};
 }
@@ -501,6 +549,7 @@ async function startPipeline(){
     return runDemoPipeline();
   }
 
+  if(document.getElementById('btnStart').disabled) return; // 防重复
   agentResults = {};
   resetUI();
   startTimer();
@@ -560,43 +609,63 @@ async function runSSEPipeline(){
 }
 
 function handleSSEEvent(evt){
-  const {step, agent, status, chunk, result, stream_text} = evt;
+  // 兼容后端格式：{type, agent, step, result} 和前端期望的 {status, ...}
+  // 将后端type映射为status
+  const evtType = evt.type || '';
+  const step = evt.step;
+  const agent = evt.agent;
+  const result = evt.result;
 
-  if(status==='running'){
-    // 流式文字输出
-    if(stream_text){
-      appendStreamingText(agent, stream_text);
-    }
-    // 更新拓扑
-    if(step && agent){
+  // 映射后端事件类型到前端status
+  let status = evt.status; // 如果后端已提供status则直接用
+  if(!status){
+    if(evtType === 'agent_start') status = 'running';
+    else if(evtType === 'agent_done') status = 'completed';
+    else if(evtType === 'debate_round') status = 'running';
+    else if(evtType === 'pipeline_done') status = 'completed';
+    else if(evtType === 'error') status = 'error';
+    else status = 'running';
+  }
+
+  // 流式文字输出
+  if(evt.stream_text){
+    appendStreamingText(agent, evt.stream_text);
+  }
+
+  // 更新拓扑和Pipeline
+  if(step && agent){
+    if(status === 'running'){
       setTopoNode(agent, 'running');
       setPipe(step, 'active');
       log(`${AGENT_ICONS[agent]} ${AGENT_LABELS[agent]} 运行中...`,'info');
-    }
-    // 辩论开始
-    if(evt.type==='debate_start'){
-      debateState.showing = true;
-      debateState.round = 0;
-      showDebatePanel();
-      log('⚔️ 辩论开始','warn');
-    }
-    // 辩论轮次
-    if(evt.type==='debate_round'){
-      debateState.round = evt.round;
-      debateState.current_gen = evt.gen_text || '';
-      debateState.current_rev = evt.rev_text || '';
-      debateState.current_score = evt.hallucination_score;
-      updateDebatePanel();
-    }
-    // 辩论结束
-    if(evt.type==='debate_end'){
-      debateState.verdict = evt.verdict;
-      debateState.final_score = evt.hallucination_score;
-      closeDebatePanel();
-      log('⚔️ 辩论结束：'+vl2(evt.verdict),'success');
+      showSkeleton(agent);
     }
   }
 
+  // 辩论开始
+  if(evtType==='debate_start'){
+    debateState.showing = true;
+    debateState.round = 0;
+    showDebatePanel();
+    log('⚔️ 辩论开始','warn');
+  }
+  // 辩论轮次
+  if(evtType==='debate_round'){
+    debateState.round = evt.round;
+    debateState.current_gen = evt.gen_text || debateState.current_gen || '';
+    debateState.current_rev = evt.rev_text || debateState.current_rev || '';
+    debateState.current_score = evt.hallucination_score;
+    updateDebatePanel();
+  }
+  // 辩论结束
+  if(evtType==='debate_end'){
+    debateState.verdict = evt.verdict;
+    debateState.final_score = evt.hallucination_score;
+    closeDebatePanel();
+    log('⚔️ 辩论结束：'+vl2(evt.verdict),'success');
+  }
+
+  // Agent完成
   if(status==='completed' && result){
     // Agent完成
     agentResults[agent] = result;
@@ -626,7 +695,8 @@ async function runDirectPipeline(){
   const steps = [
     {name:'diagnosis',     step:1, ctx:p},
     {name:'knowledge_gen',  step:2, ctx:{diagnosis:agentResults.diagnosis, profile:p}},
-    {name:'reviewer',      step:3, ctx:{content:agentResults.knowledge_gen?.content||'', source_refs:agentResults.knowledge_gen?.source_refs||[]}},
+    {name:'reviewer',      step:3, ctx:{content:agentResults.knowledge_gen?.content||'', source_refs:agentResults.knowledge_gen?.source_refs||[], debate_round:1}},
+    {name:'reviewer_r2',   step:'3r', ctx:{content:agentResults.knowledge_gen?.content||'', source_refs:agentResults.knowledge_gen?.source_refs||[], debate_round:2}},
     {name:'practice_guide', step:4, ctx:{topic:agentResults.diagnosis?.focus_topic||'Python基础', level:p.level}},
     {name:'quiz',           step:5, ctx:{knowledge:agentResults.knowledge_gen||{}, level:p.level}},
     {name:'iteration',      step:6, ctx:{quiz_result:agentResults.quiz||{}, diagnosis:agentResults.diagnosis||{}, knowledge:agentResults.knowledge_gen||{}}},
@@ -634,14 +704,24 @@ async function runDirectPipeline(){
   ];
 
   for(const s of steps){
-    setTopoNode(s.name, 'running');
+    const displayName = s.name === 'reviewer_r2' ? 'reviewer' : s.name;
+    const displayLabel = s.name === 'reviewer_r2' ? '审核裁判(第2轮)' : (AGENT_LABELS[s.name]||s.name);
+    setTopoNode(displayName, 'running');
     setPipe(s.step, 'active');
-    log(`${AGENT_ICONS[s.name]} ${AGENT_LABELS[s.name]} 运行中...`,'info');
-    showSkeleton(s.name);
+    log((AGENT_ICONS[displayName]||'')+' '+displayLabel+' 运行中...','info');
+    showSkeleton(displayName);
+
+    // 辩论阶段显示覆盖层
+    if(s.name === 'reviewer' || s.name === 'reviewer_r2'){
+      if(!debateState.showing){ debateState.showing = true; showDebatePanel(); }
+      debateState.round = s.ctx.debate_round || 1;
+      document.getElementById('debateRoundLabel').textContent = '第 '+debateState.round+' 轮';
+    }
 
     // 实时流式渲染
     let buf = '';
-    const {system, user} = buildPrompts(s.name, s.ctx);
+    const promptName = s.name === 'reviewer_r2' ? 'reviewer' : s.name;
+    const {system, user} = buildPrompts(promptName, s.ctx);
     try {
       const fullText = await callLLM(system, user, ch => { buf += ch; });
       const parsed = parseLLMOutput(fullText || buf);
@@ -652,17 +732,33 @@ async function runDirectPipeline(){
       agentResults[s.name] = getDemo(s.name);
     }
 
-    setTopoNode(s.name, 'done');
+    const resultName = s.name === 'reviewer_r2' ? 'reviewer' : s.name;
+    setTopoNode(resultName, 'done');
     setPipe(s.step, 'done');
-    removeSkeleton(s.name);
+    removeSkeleton(resultName);
+
+    // 辩论面板更新
+    if(resultName === 'reviewer' && parsed.hallucination_score !== undefined){
+      debateState.current_score = parsed.hallucination_score;
+      debateState.current_rev = parsed.summary || '审核完成';
+      debateState.verdict = parsed.verdict;
+      updateDebatePanel();
+      if(s.name === 'reviewer_r2'){
+        debateState.round = 2;
+        updateDebatePanel();
+        setTimeout(()=>{ debateState.showing = false; closeDebatePanel(); }, 2500);
+      }
+    }
+
+    agentResults[resultName] = parsed;
     const done = Object.keys(agentResults).length;
     document.getElementById('mAgents').textContent = done+'/7';
     const pct = Math.round(done/7*100);
-    updateProgress(pct, `${AGENT_LABELS[s.name]}完成 · ${done}/7`);
-    log(`✅ ${AGENT_LABELS[s.name]} 完成`,'success');
-    renderCard(s.name, agentResults[s.name]);
+    updateProgress(pct, (AGENT_LABELS[resultName]||resultName)+'完成 · '+done+'/7');
+    log('✅ '+(AGENT_LABELS[resultName]||resultName)+' 完成','success');
+    renderCard(resultName, agentResults[resultName]);
 
-    if(s.name==='reviewer'){
+    if(resultName==='reviewer'){
       document.getElementById('mHalluc').textContent = agentResults.reviewer.hallucination_score??'-';
       document.getElementById('mAcc').textContent = agentResults.reviewer.accuracy_score??'-';
     }
@@ -689,6 +785,32 @@ function runDemoPipeline(){
       setPipe(s.step,'active');
       showSkeleton(s.name);
     }, delay);
+    // 审核阶段显示辩论动画
+    if(s.name==='reviewer'){
+      delay += 400;
+      setTimeout(()=>{
+        debateState.showing = true;
+        debateState.round = 1;
+        showDebatePanel();
+        setTimeout(()=>{
+          debateState.round = 1;
+          debateState.current_score = 35;
+          debateState.current_gen = '正在审核内容准确性...';
+          debateState.current_rev = '第1轮审核：发现部分内容缺少来源标注，幻觉分数35';
+          updateDebatePanel();
+          setTimeout(()=>{
+            debateState.round = 2;
+            debateState.current_score = 18;
+            debateState.current_gen = '已补充来源标注...';
+            debateState.current_rev = '第2轮审核：来源标注完善，幻觉分数降至18';
+            debateState.verdict = 'pass';
+            debateState.final_score = 18;
+            updateDebatePanel();
+            setTimeout(()=>{ closeDebatePanel(); }, 1500);
+          }, 1200);
+        }, 800);
+      }, delay);
+    }
     delay += 600;
     setTimeout(()=>{
       setTopoNode(s.name,'done');
@@ -701,8 +823,8 @@ function runDemoPipeline(){
       updateProgress(pct, `${AGENT_LABELS[s.name]}完成 · ${done}/7`);
       renderCard(s.name, agentResults[s.name]);
       if(s.name==='reviewer'){
-        document.getElementById('mHalluc').textContent = '8';
-        document.getElementById('mAcc').textContent = '92';
+        document.getElementById('mHalluc').textContent = agentResults.reviewer.hallucination_score||'30';
+        document.getElementById('mAcc').textContent = agentResults.reviewer.accuracy_score||'88';
       }
       if(s.name==='socratic') log('✅ Demo全流程完成','success');
     }, delay);
@@ -743,14 +865,15 @@ async function runSingle(name){
 
 // ============ Demo数据 ============
 function getDemo(name){
+  const p = getProfile();
   const demos = {
-    diagnosis:{learner_level:'intermediate',level_score:65,strengths:['C语言基础','数据结构理解'],blind_spots:['Python生态不熟悉','AI框架未接触'],focus_topic:'Python与AI开发',learning_path:[{phase:'Python基础',topics:['语法','函数','模块'],estimated_hours:20},{phase:'AI实战',topics:['NumPy','Pandas','ML'],estimated_hours:40}],_demo:true},
-    knowledge_gen:{title:'Python与AI开发基础',content:'## Python基础\n\nPython是高级语言，以简洁著称。\n\n### 核心概念\n- **变量与类型**：动态类型\n- **函数**：`def`关键字\n- **列表推导式**：`[x*2 for x in lst]`\n\n```python\ndef greet(name):\n    return f"Hello, {name}!"\n```\n\n### AI开发入门\nNumPy→Pandas→Scikit-learn循序渐进...',concepts:['Python语法','NumPy','Pandas','机器学习'],source_refs:[{source:'python_basics.md',type:'[教材]'},{source:'ai_basics.md',type:'[实践]'}],_demo:true},
-    reviewer:{verdict:'pass',hallucination_score:8,accuracy_score:92,issues:[],debate_rounds:2,debate_log:[{round:1,reviewer_verdict:'pass',hallucination_score:10},{round:2,reviewer_verdict:'pass',hallucination_score:8}],_demo:true},
-    practice_guide:{difficulty:'medium',estimated_time:'3-4小时',prerequisites:['Python 3.10+','VS Code'],steps:[{title:'环境搭建',description:'安装Python环境',code:'# macOS\nbrew install python3',expected_output:'Python 3.12.x'},{title:'第一个程序',description:'Hello World',code:"print('Hello!')",expected_output:'Hello!'}],tips:['用虚拟环境隔离依赖','善用type hints'],_demo:true},
-    quiz:{questions:[{type:'choice',question:'Python中定义函数的关键字是？',options:['function','def','func','lambda'],correct:1,explanation:'Python用def定义函数。lambda用于匿名函数。'},{type:'choice',question:'哪个是Python可变数据结构？',options:['tuple','str','list','int'],correct:2,explanation:'list是可变类型。'},{type:'choice',question:'NumPy创建全0数组的函数是？',options:['np.ones()','np.zeros()','np.empty()','np.arange()'],correct:1,explanation:'np.zeros()创建全0数组。'},{type:'choice',question:'过拟合指？',options:['训练差/测试差','训练好/测试差','训练好/测试好','模型太简单'],correct:1,explanation:'过拟合=训练好但泛化差。'}],total_score:100,passing_score:60,_demo:true},
-    iteration:{decision:'consolidate',adjustments:{focus_topics:['Python基础练习'],remove_topics:['高级装饰器'],add_topics:['NumPy实战']},suggestion:'建议先巩固Python基础再进入AI学习',next_steps:['完成NumPy基础练习','用Pandas清洗数据'],_demo:true},
-    socratic:{response:'你对Python已有初步了解。让我通过问题引导思考：如果要把列表中的偶数翻倍，你会怎么写？',questions:[{question:'列表推导式[x*2 for x in lst if x%2==0]的执行顺序是什么？',purpose:'理解列表推导式内部机制'},{question:'生成器和列表有什么区别？',purpose:'引导思考惰性求值'}],hint:'先for迭代，再if过滤，最后计算表达式值',_demo:true},
+    diagnosis:{learner_level:p.level||'intermediate',level_score:p.level==='beginner'?25:p.level==='advanced'?80:55,strengths:['C语言基础','数据结构理解','逻辑思维'],blind_spots:['Python生态不熟悉','AI框架未接触','工程实践不足'],focus_topic:'Python与AI开发',learning_path:[{phase:'Python基础',topics:['语法','函数','模块','面向对象'],estimated_hours:20},{phase:'数据处理',topics:['NumPy','Pandas','文件IO'],estimated_hours:15},{phase:'AI实战',topics:['Scikit-learn','模型训练','评估优化'],estimated_hours:40}],summary:'学习者有编程基础但Python生态和AI框架经验不足，建议从Python语法系统学习',_demo:true},
+    knowledge_gen:{title:'Python与AI开发基础',content:'## Python编程基础\n\nPython是一种高级编程语言，以简洁优雅的语法著称，广泛应用于数据科学、AI、Web开发等领域。\n\n### 核心概念\n- **变量与数据类型**：Python是动态类型语言，变量无需声明类型\n  ```python\n  name = "Alice"  # 字符串\n  age = 25        # 整数\n  scores = [90, 85, 92]  # 列表\n  ```\n- **函数定义**：使用`def`关键字\n  ```python\n  def greet(name, greeting="Hello"):\n      return f"{greeting}, {name}!"\n  ```\n- **列表推导式**：简洁的数据变换语法\n  ```python\n  evens = [x for x in range(20) if x % 2 == 0]\n  ```\n\n### AI开发入门\n从NumPy\u2192Pandas\u2192Scikit-learn循序渐进：\n1. **NumPy**：高性能数值计算基础\n2. **Pandas**：数据处理与分析利器\n3. **Scikit-learn**：经典机器学习框架',concepts:['Python语法','NumPy','Pandas','机器学习','列表推导式'],source_refs:[{id:'KB001',source:'python_basics.md',type:'[教材]',relevance:'核心语法参考'},{id:'KB002',source:'ai_basics.md',type:'[实践]',relevance:'AI工具链参考'},{id:'KB003',source:'web_dev.md',type:'[官方文档]',relevance:'Web开发实践'}],_demo:true},
+    reviewer:{verdict:'pass_with_concerns',hallucination_score:30,accuracy_score:88,issues:[{type:'missing_source',description:'列表推导式部分缺少官方文档引用',severity:'medium',suggestion:'添加Python官方教程链接'},{type:'industry_violation',description:'AI开发路径描述过于简化，未提及模型验证',severity:'low',suggestion:'补充交叉验证和模型评估内容'}],debate_rounds:2,debate_log:[{round:1,reviewer_verdict:'pass_with_concerns',hallucination_score:35},{round:2,reviewer_verdict:'pass',hallucination_score:18}],_demo:true},
+    practice_guide:{title:'Python与AI开发实操指南',difficulty:'medium',estimated_time:'3-4小时',prerequisites:['Python 3.10+','VS Code或PyCharm','pip包管理器'],steps:[{step:1,title:'环境搭建',description:'安装Python环境并配置虚拟环境',code:'# 创建虚拟环境\npython -m venv myenv\n# 激活（Windows）\nmyenv\\Scripts\\activate\n# 安装依赖\npip install numpy pandas scikit-learn',tip:'建议使用虚拟环境隔离项目依赖'},{step:2,title:'数据处理练习',description:'用Pandas读取CSV并进行基本分析',code:'import pandas as pd\n\ndf = pd.read_csv("data.csv")\nprint(df.describe())  # 统计摘要\nprint(df.isnull().sum())  # 缺失值检查',tip:'注意处理缺失值和异常值'},{step:3,title:'模型训练',description:'用Scikit-learn训练一个简单的分类模型',code:'from sklearn.model_selection import train_test_split\nfrom sklearn.ensemble import RandomForestClassifier\n\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)\nmodel = RandomForestClassifier(n_estimators=100)\nmodel.fit(X_train, y_train)\nprint(f"准确率: {model.score(X_test, y_test):.2f}")',tip:'使用交叉验证避免过拟合'}],tips:['用虚拟环境隔离依赖','善用type hints提升代码质量','遵循PEP 8编码规范'],_demo:true},
+    quiz:{questions:[{id:1,type:'choice',difficulty:'easy',question:'Python中用什么关键字定义函数？',options:['function','def','func','lambda'],correct:1,explanation:'Python使用def关键字定义函数。lambda用于匿名函数。',knowledge_point:'函数定义'},{id:2,type:'choice',difficulty:'easy',question:'以下哪个是Python的可变数据结构？',options:['tuple','str','list','int'],correct:2,explanation:'list是可变类型，tuple和str是不可变类型。',knowledge_point:'数据类型'},{id:3,type:'choice',difficulty:'medium',question:'NumPy创建全0数组的函数是？',options:['np.ones()','np.zeros()','np.empty()','np.arange()'],correct:1,explanation:'np.zeros()创建全0数组，np.ones()创建全1数组。',knowledge_point:'NumPy基础'},{id:4,type:'choice',difficulty:'medium',question:'过拟合(Overfitting)指的是什么？',options:['训练差且测试差','训练好但测试差','训练好且测试好','模型太简单导致欠拟合'],correct:1,explanation:'过拟合=模型在训练集表现好但在测试集泛化差。',knowledge_point:'机器学习评估'},{id:5,type:'choice',difficulty:'hard',question:'Scikit-learn中防止过拟合的最佳实践是？',options:['增加模型复杂度','减少训练数据','使用交叉验证+正则化','只看训练集准确率'],correct:2,explanation:'交叉验证评估泛化能力，正则化约束模型复杂度，两者结合是防过拟合标准方法。',knowledge_point:'模型优化'}],total_score:100,passing_score:60,summary:'共5题，覆盖Python基础到机器学习评估',_demo:true},
+    iteration:{decision:'consolidate',decision_label:'巩固强化',reason:'正确率60%，基本掌握但AI框架和模型优化存在薄弱点',adjustments:{difficulty_shift:0,focus_topics:['NumPy/Pandas实战','模型评估方法','交叉验证'],skip_topics:['已掌握的Python语法'],add_topics:['Scikit-learn进阶','特征工程']},suggestion:'建议先巩固Python数据处理基础，再系统学习机器学习模型训练与评估',next_steps:['完成NumPy/Pandas数据处理练习','学习Scikit-learn模型评估与交叉验证','实践一个完整的分类项目'],_demo:true},
+    socratic:{title:'Python与AI开发 — 启发式导学',sections:[{content:'Python动态类型系统',question:'为什么Python选择动态类型？这和静态类型语言（如Java）相比有什么优劣？',hint:'思考开发效率和运行安全之间的权衡',depth:'analysis',follow_ups:['类型提示(Type Hints)如何弥补动态类型的不足？']},{content:'列表推导式与生成器',question:'列表推导式`[x*2 for x in lst]`和生成器`(x*2 for x in lst)`有什么区别？什么时候用哪个？',hint:'考虑内存使用和惰性求值',depth:'application',follow_ups:['大数据场景下为什么生成器更优？']},{content:'过拟合与模型选择',question:'如果你的模型在训练集上99%准确但测试集只有70%，你会怎么诊断和解决这个问题？',hint:'从数据、模型、验证三个角度思考',depth:'evaluation',follow_ups:['正则化为什么能防止过拟合？它的数学原理是什么？']}],reflection_prompts:['回顾Python学习过程，你最大的认知转变是什么？','如果让你设计一个AI项目解决实际问题，你会选什么场景？'],response:'你对Python和AI已有初步了解。让我通过问题引导你深入思考——如果要把列表中的偶数翻倍，你会怎么写？为什么选择这种方式而不是循环？',questions:[{question:'列表推导式[x*2 for x in lst if x%2==0]的执行顺序是什么？',purpose:'理解列表推导式内部机制'},{question:'生成器和列表有什么本质区别？',purpose:'引导思考惰性求值与内存效率'}],hint:'先for迭代，再if过滤，最后计算表达式值',_demo:true},
   };
   return demos[name] || {_demo:true};
 }
@@ -942,7 +1065,7 @@ function renderCard(name, data){
       ${isDemo?'<span style="font-size:8px;background:var(--warn);color:#000;padding:1px 7px;border-radius:7px;margin-left:4px">DEMO</span>':''}
       <span class="toggle-icon">▼</span>
     </h4>
-    <div class="card-body" id="cb-'+name+'">${body}</div>
+    <div class="card-body" id="cb-${name}">${body}</div>
     <div class="card-actions">
       <button data-action="copyResult" data-args="${name}">📋 复制JSON</button>
       ${name==='knowledge_gen'?'<button data-action="copyCardContent" data-args="card-'+name+'">📄 复制内容</button>':''}
@@ -1053,33 +1176,18 @@ function buildCardBody(name, data){
 function renderQuizHTML(qs){
   let h = '';
   qs.forEach((q,i)=>{
-    h += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px;margin-bottom:7px" id="qc-${i}">
-      <div style="font-size:9px;color:var(--accent);font-weight:700;margin-bottom:3px">题目 ${i+1}/${qs.length}</div>
-      <div style="font-size:11px;margin-bottom:6px">${esc(q.question||q.q||'')}</div>
-      <div>${(q.options||q.opts||[]).map((o,j)=>`<div data-action="pickOpt" data-args="${i},${j}" style="padding:6px 9px;border:1px solid var(--border);border-radius:6px;margin-bottom:3px;font-size:10px;cursor:pointer;transition:all .2s" class="qopt-${i}">${'ABCD'[j]}. ${esc(o)}</div>`).join('')}</div>
-      <div id="qe-${i}" style="display:none;margin-top:5px;font-size:9px;color:var(--accent);background:rgba(0,232,176,.06);padding:5px 8px;border-radius:5px">💡 ${esc(q.explanation||q.exp||'')}</div>
-    </div>`;
-  });
-  h += `<button class="btn btn-primary" style="margin-top:8px" data-action="gradeQuiz">📊 批改评分</button><div id="quizScore"></div>`;
-  return h;
-}
-
-let userAnswers = {};
-function pickOpt(qi, oi){
-  document.querySelectorAll(`.qopt-${qi}`).forEach(o=>{o.style.borderColor='var(--border)';o.style.background='';});
-  const els = document.querySelectorAll(`.qopt-${qi}`);
-  if(els[oi]){ els[oi].style.borderColor='var(--accent)'; els[oi].style.background='rgba(0,232,176,.08)'; }
-  userAnswers[qi] = oi;
-}
-function gradeQuiz(){
-  if(!quizData) return;
-  const qs = quizData.questions||[];
-  let correct = 0;
-  qs.forEach((q,i)=>{
     const exp = document.getElementById('qe-'+i);
     if(exp) exp.style.display = 'block';
-    const opts = document.querySelectorAll(`.qopt-${i}`);
-    const ci = q.correct;
+    const opts = document.querySelectorAll('.qopt-'+i);
+    // 标准化correct字段：A/B/C/D → 0/1/2/3，字符串数字 → 数字
+    let ci = q.correct;
+    if(typeof ci === 'string'){
+      if('ABCD'.includes(ci.toUpperCase())) ci = 'ABCD'.indexOf(ci.toUpperCase());
+      else if(!isNaN(ci)) ci = parseInt(ci);
+      else ci = 0;
+    }
+    ci = Math.max(0, Math.min(3, ci || 0));
+    q.correct = ci; // 写回标准化值
     if(opts[ci]){ opts[ci].style.borderColor='var(--success)'; opts[ci].style.background='rgba(0,232,176,.12)'; }
     const ua = userAnswers[i];
     if(ua !== undefined && ua !== ci && opts[ua]){ opts[ua].style.borderColor='var(--danger)'; opts[ua].style.background='rgba(255,85,85,.08)'; }
@@ -1088,16 +1196,37 @@ function gradeQuiz(){
   const score = Math.round(correct/qs.length*100);
   document.getElementById('quizScore').innerHTML = `<div style="text-align:center;font-size:18px;font-weight:900;padding:12px;border-radius:10px;margin-top:6px;background:${score>=60?'rgba(0,232,176,.08)':'rgba(255,85,85,.08)'};color:${score>=60?'var(--success)':'var(--danger)'};border:1px solid ${score>=60?'rgba(0,232,176,.2)':'rgba(255,85,85,.2)'}">🎯 ${score}/100 · 正确${correct}/${qs.length}</div>`;
   document.getElementById('mQuiz').textContent = score;
+
+  // 将用户答案写回agentResults.quiz，确保迭代Agent能收到正确数据
+  if(agentResults.quiz){
+    agentResults.quiz.user_answers = {};
+    qs.forEach((q,i) => {
+      const qid = String(q.id || i+1);
+      agentResults.quiz.user_answers[qid] = userAnswers[i] !== undefined ? userAnswers[i] : -1;
+    });
+    // 同时更新 questions 中的 correct 为数字索引
+    qs.forEach(q => {
+      if(typeof q.correct !== 'number') q.correct = 0;
+    });
+  }
 }
 
 // ============ 工具函数 ============
 function sc2(s){ return s>=80?'var(--success)':s>=50?'var(--warn)':'var(--danger)'; }
 function vl2(v){ return {pass:'✅ 通过',pass_with_concerns:'⚠ 有顾虑',needs_revision:'❌ 需修订',reject:'🚫 驳回'}[v]||v||''; }
+function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function md2html(md){
   if(!md) return '';
-  return md
-    .replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre style="background:#060b18;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:10px;font-family:Cascadia Code,monospace;color:#00d4ff;overflow-x:auto;margin:5px 0"><code>$2</code></pre>')
+  // 先保护代码块，防止后续替换在代码内注入标签
+  const codeBlocks = [];
+  let processed = md.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, c) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push('<pre style="background:#060b18;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:10px;font-family:Cascadia Code,monospace;color:#00d4ff;overflow-x:auto;margin:5px 0"><code>'+esc(c)+'</code></pre>');
+    return '__CODE_BLOCK_' + idx + '__';
+  });
+  processed = processed
     .replace(/`([^`]+)`/g,'<code style="background:var(--bg);padding:1px 4px;border-radius:3px;font-size:10px">$1</code>')
     .replace(/^### (.+)$/gm,'<h4 style="font-size:12px;font-weight:700;margin:7px 0 3px">$1</h4>')
     .replace(/^## (.+)$/gm,'<h3 style="font-size:13px;font-weight:800;margin:9px 0 5px">$1</h3>')
@@ -1105,6 +1234,11 @@ function md2html(md){
     .replace(/^[\-\*] (.+)$/gm,'<li style="font-size:10px;margin-left:14px">$1</li>')
     .replace(/\n{2,}/g,'<br><br>')
     .replace(/\n/g,'<br>');
+  // 恢复代码块
+  codeBlocks.forEach((html, i) => {
+    processed = processed.replace('__CODE_BLOCK_' + i + '__', html);
+  });
+  return processed;
 }
 
 function log(msg, level){
@@ -1205,16 +1339,31 @@ function renderReportCards(){
 function renderRadarChart(){
   const rg = document.getElementById('resultsArea');
   const diag = agentResults.diagnosis||{};
+  const rev = agentResults.reviewer||{};
   const score = diag.level_score||50;
-  // 6维雷达图数据
-  const dimensions = [
-    {label:'编程基础', value: Math.min(100, score + 10)},
-    {label:'算法思维', value: Math.min(100, score - 5)},
-    {label:'工程实践', value: Math.min(100, score + 5)},
-    {label:'AI应用',   value: Math.min(100, score - 15)},
-    {label:'安全意识', value: Math.min(100, score + 8)},
-    {label:'创新思维', value: Math.min(100, score - 8)},
+  const strengths = diag.strengths||[];
+  const blindSpots = diag.blind_spots||[];
+  
+  // 从诊断结果动态映射6维
+  const strengthsText = strengths.join(' ');
+  const blindText = blindSpots.join(' ');
+  const dimensionKeywords = [
+    {label:'编程基础', kw:['编程','Python','语法','基础','代码','函数'], base:0.5},
+    {label:'算法思维', kw:['算法','数据结构','排序','复杂度','递归'], base:0.35},
+    {label:'工程实践', kw:['工程','项目','实践','开发','部署','框架'], base:0.45},
+    {label:'AI应用',   kw:['AI','机器学习','深度学习','模型','训练','NumPy','Pandas'], base:0.3},
+    {label:'安全意识', kw:['安全','加密','验证','防护','XSS','SQL注入'], base:0.4},
+    {label:'创新思维', kw:['创新','设计','优化','架构','重构','模式'], base:0.35},
   ];
+  
+  const dimensions = dimensionKeywords.map(d => {
+    let value = d.base * 100 + (score - 50) * 0.4;
+    // 强项匹配加分
+    if(d.kw.some(k => strengthsText.includes(k))) value = Math.min(100, value + 15);
+    // 盲区匹配减分
+    if(d.kw.some(k => blindText.includes(k))) value = Math.max(10, value - 15);
+    return {label: d.label, value: Math.round(Math.min(100, Math.max(10, value)))};
+  });
 
   const card = document.createElement('div');
   card.className='result-card';
@@ -1234,7 +1383,9 @@ function renderRadarChart(){
         </div>`).join('')}
         <div style="margin-top:10px;font-size:9px;color:var(--muted);background:var(--bg);border-radius:7px;padding:6px;line-height:1.5">
           <strong style="color:var(--accent2)">诊断结论</strong><br>
-          ${score>=70?'你的基础扎实，建议向AI应用和算法深度方向发展':'建议系统学习Python基础，配合项目实战提升工程能力'}
+          ✅ 强项：${strengths.length?strengths.slice(0,3).map(esc).join('、'):'暂无'}<br>
+          ⚠️ 盲区：${blindSpots.length?blindSpots.slice(0,3).map(esc).join('、'):'暂无'}<br>
+          ${score>=70?'基础扎实，建议向AI应用和算法深度方向发展':'建议系统学习Python基础，配合项目实战提升工程能力'}
         </div>
       </div>
     </div>`;
@@ -1248,8 +1399,16 @@ function renderRadarChart(){
 function drawRadar(dims){
   const canvas = document.getElementById('radarCanvas');
   if(!canvas) return;
+  // HiDPI支持
+  const dpr = window.devicePixelRatio || 1;
+  const displayW = 260, displayH = 260;
+  canvas.width = displayW * dpr;
+  canvas.height = displayH * dpr;
+  canvas.style.width = displayW + 'px';
+  canvas.style.height = displayH + 'px';
   const ctx = canvas.getContext('2d');
-  const w=canvas.width, h=canvas.height, cx=w/2, cy=h/2;
+  ctx.scale(dpr, dpr);
+  const w = displayW, h = displayH, cx = w/2, cy = h/2;
   const r = Math.min(w,h)*0.38;
   const n = dims.length;
   const step = (Math.PI*2)/n;
