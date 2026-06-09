@@ -120,15 +120,97 @@ class KnowledgeGenAgent(BaseAgent):
         return "\n---\n".join(all_summaries) if all_summaries else ""
     
     def _fallback_knowledge(self, topic: str, level: str, error: str) -> dict:
-        """兜底生成"""
+        """兜底生成 - 基于topic和level生成更真实的学习内容"""
+        # 根据主题生成针对性内容
+        topic_content = {
+            "Python": f"""## Python编程基础
+
+### 核心概念
+Python是一种高级编程语言，以简洁优雅的语法著称。它支持面向对象、函数式和过程式编程范式。
+
+### 关键语法
+- **变量与数据类型**：Python是动态类型语言，变量无需声明类型
+  ```python
+  name = "Alice"  # 字符串
+  age = 25        # 整数
+  scores = [90, 85, 92]  # 列表
+  ```
+- **函数定义**：使用`def`关键字
+  ```python
+  def greet(name, greeting="Hello"):
+      return f"{greeting}, {name}!"
+  ```
+- **列表推导式**：简洁的数据变换语法
+  ```python
+  evens = [x for x in range(20) if x % 2 == 0]
+  ```
+
+### 实践要点
+1. 使用虚拟环境管理依赖（`python -m venv`）
+2. 熟悉pip包管理器
+3. 掌握常用内置函数：`map()`, `filter()`, `zip()`""",
+            "AI": f"""## AI开发入门
+
+### 机器学习基础
+机器学习是AI的核心分支，通过数据训练模型来实现预测和决策。
+
+### 核心工具链
+- **NumPy**：高性能数值计算
+  ```python
+  import numpy as np
+  arr = np.array([1, 2, 3])
+  print(arr.mean())  # 2.0
+  ```
+- **Pandas**：数据处理与分析
+  ```python
+  import pandas as pd
+  df = pd.read_csv('data.csv')
+  df.describe()  # 统计摘要
+  ```
+- **Scikit-learn**：经典机器学习
+  ```python
+  from sklearn.model_selection import train_test_split
+  from sklearn.linear_model import LogisticRegression
+  ```
+
+### 学习路径
+1. 数据处理 → 2. 特征工程 → 3. 模型训练 → 4. 评估优化""",
+        }
+        
+        # 选择最匹配的内容模板
+        content = topic_content.get("Python", "")
+        for key, val in topic_content.items():
+            if key.lower() in topic.lower():
+                content = val
+                break
+        if not content:
+            content = f"""## {topic}学习指南
+
+### 核心概念
+{topic}是当前技术领域的重要方向，需要系统性的学习和实践。
+
+### 学习要点
+1. **基础理论**：理解核心原理和关键概念
+2. **动手实践**：通过项目练习巩固知识
+3. **进阶提升**：深入理解底层机制和最佳实践
+
+### 实践建议
+- 从简单示例开始，逐步增加复杂度
+- 多阅读官方文档和优质教程
+- 参与开源项目提升实战能力"""
+
+        level_suffix = {"beginner": "（入门级）", "intermediate": "（进阶级）", "advanced": "（高级）"}
         return {
-            "title": f"{topic} - {level}级学习内容",
-            "content": f"## {topic}\n\n这是为{level}级学习者生成的关于{topic}的学习内容。\n\n### 核心概念\n{topic}的基本原理和关键要点。\n\n### 实操示例\n通过动手练习加深理解。\n\n### 扩展阅读\n更多深入资料。",
-            "source_refs": [{"id": "KB001", "title": "基础知识库", "source": "教材", "relevance": "核心参考"}],
-            "concepts": [f"{topic}基本概念", f"{topic}核心原理"],
-            "examples": [f"{topic}入门示例"],
-            "extensions": [f"{topic}进阶资料"],
-            "summary": f"面向{level}级学习者的{topic}个性化内容",
+            "title": f"{topic} - {level}级学习内容{level_suffix.get(level, '')}",
+            "content": content,
+            "source_refs": [
+                {"id": "KB001", "source": "python_basics.md", "type": "[教材]", "relevance": "核心参考"},
+                {"id": "KB002", "source": "ai_basics.md", "type": "[实践]", "relevance": "应用参考"},
+            ],
+            "concepts": [f"{topic}基本概念", f"{topic}核心原理", "实践方法论"],
+            "examples": [f"{topic}入门示例", f"{topic}进阶练习"],
+            "extensions": [f"{topic}进阶资料", "相关开源项目"],
+            "summary": f"面向{level}级学习者的{topic}个性化内容，涵盖概念讲解与实操示例",
             "fallback": True,
             "error": error,
         }
