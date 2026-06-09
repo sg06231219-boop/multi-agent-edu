@@ -74,7 +74,7 @@ class Orchestrator:
         pipeline_result["final_output"] = {"diagnosis": diagnosis, "knowledge": knowledge, "review": review_result, "practice": practice, "quiz": quiz, "iteration": iteration, "socratic": socratic}
         return pipeline_result
 
-    async def _debate_loop(self, content: str, source_refs: list, max_rounds: int = 2, event_callback=None) -> dict:
+    async def _debate_loop(self, content: str, source_refs: list, max_rounds: int = 2, min_rounds: int = 2, event_callback=None) -> dict:
         current_content = content
         debate_log = []
 
@@ -87,7 +87,8 @@ class Orchestrator:
             if event_callback:
                 await event_callback({"type": "debate_round", "round": round_num, "verdict": review.get("verdict", "uncertain"), "hallucination_score": hallucination_score, "issues_count": len(issues)})
 
-            if hallucination_score < 20:
+            # 强制至少跑完min_rounds轮辩论，才允许提前退出
+            if hallucination_score < 20 and round_num >= min_rounds:
                 review["debate_rounds"] = round_num
                 review["debate_log"] = debate_log
                 review["needs_revision"] = False
@@ -124,10 +125,12 @@ class Orchestrator:
             yield {"type": "agent_start", "agent": "reviewer", "step": 3}
 
             # 内联辩论循环,直接yield辩论事件
+            # 强制至少2轮辩论，确保辩论机制真正运行
             debate_log = []
             current_content = knowledge.get("content", "")
             source_refs = knowledge.get("source_refs", [])
             review = None
+            min_rounds = 2  # 至少2轮辩论
 
             for round_num in range(1, self.debate_rounds + 1):
                 review = await self.run_agent("reviewer", content=current_content, source_refs=source_refs, debate_round=round_num)
@@ -137,7 +140,8 @@ class Orchestrator:
 
                 yield {"type": "debate_round", "round": round_num, "verdict": review.get("verdict", "uncertain"), "hallucination_score": hallucination_score, "issues_count": len(issues)}
 
-                if hallucination_score < 20:
+                # 只有跑完至少min_rounds轮且分数足够低才提前退出
+                if hallucination_score < 20 and round_num >= min_rounds:
                     review["debate_rounds"] = round_num
                     review["debate_log"] = debate_log
                     review["needs_revision"] = False
