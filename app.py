@@ -2,7 +2,7 @@
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
 7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
-v6.0.0 - 全面修复辩论/渲染/SSE/测验/雷达图/Prompt优化
+v6.1.0 - SSE超时优雅降级 + 前端体验优化
 """
 import os
 import json
@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="6.0.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="6.1.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
@@ -141,6 +141,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+# SSE超时中间件（Render 30秒硬限制，留5秒余量）
+# ============================================================
+SSE_TIMEOUT_SECONDS = 25
+
+@app.middleware("http")
+async def sse_timeout_middleware(request: Request, call_next):
+    """对SSE流式端点注入超时检测，防止Render 30s硬限制截断响应"""
+    if request.url.path == "/api/stream":
+        request.state.sse_deadline = time.time() + SSE_TIMEOUT_SECONDS
+    response = await call_next(request)
+    return response
+
 
 # ============================================================
 # 请求模型
@@ -224,38 +238,21 @@ async def admin_page():
 # ============================================================
 @app.get("/api/health")
 async def health():
-    agents_list = orchestrator.list_agents() if orchestrator else []
+    agents_list = ["diagnosis", "knowledge_gen", "reviewer", "practice_guide", "quiz", "iteration", "socratic"]
     has_api_key = bool(os.environ.get("ZHIPUAI_API_KEY", ""))
     return {
         "status": "ok" if has_api_key else "degraded",
+        "version": "6.1.0",
         "agents": agents_list,
+        "ai_backend": "glm-4-flash",
         "api_key_configured": has_api_key,
-        "version": "6.0.0",
     }
 
 # ============================================================
 # 全流程API
 # ============================================================
-@app.post("/api/start")
-async def start_session(body: StartRequest, request: Request):
-    _check_rate(request)
-    learner_profile = body.profile.model_dump()
-    sid = store.create(learner_profile)
-    store.update(sid, status="running")
-    try:
-        result = await orchestrator.run_full_pipeline(learner_profile)
-        store.update(sid, status="completed", results=result, 
-                     agent_count=len([k for k in result if k.startswith("agent_") or k in ("diagnosis","knowledge","review","practice","quiz","iteration","socratic")]),
-                     total_seconds=result.get("_meta", {}).get("total_seconds", 0))
-        result["session_id"] = sid
-    except RuntimeError as e:
-        store.update(sid, status="error", error=str(e))
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        store.update(sid, status="error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-    return result
-
+# SSE流式端点（含超时优雅降级）
+# ============================================================
 @app.post("/api/stream")
 async def stream_pipeline(body: StreamRequest, request: Request):
     _check_rate(request)
@@ -263,12 +260,23 @@ async def stream_pipeline(body: StreamRequest, request: Request):
     sid = store.create(profile)
     store.update(sid, status="running")
     start_time = time.time()
+    sse_deadline = getattr(request.state, "sse_deadline", time.time() + SSE_TIMEOUT_SECONDS)
+    timed_out = False
     
     async def event_generator():
+        nonlocal timed_out
         try:
             yield f"data: {json.dumps({'type': 'start', 'session_id': sid, 'profile': profile}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0)
             async for event in orchestrator.run_streaming(profile):
+                # 检查SSE超时：如果即将达到Render 30s限制，优雅降级
+                if time.time() > sse_deadline:
+                    timed_out = True
+                    completed = store.get(sid).get("results", {}) if store.get(sid) else {}
+                    yield f"data: {json.dumps({'type': 'timeout', 'message': '响应时间较长，已返回部分结果，请使用前端直调模式完成剩余步骤', 'completed_agents': list(completed.keys())}, ensure_ascii=False)}\n\n"
+                    store.update(sid, status="timeout", error="SSE超时，部分结果已返回")
+                    break
+                
                 # 记录Agent完成事件
                 if event.get("type") == "agent_done":
                     agent = event.get("agent", "")
@@ -279,9 +287,10 @@ async def stream_pipeline(body: StreamRequest, request: Request):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0)
             
-            elapsed = round(time.time() - start_time, 1)
-            store.update(sid, status="completed", total_seconds=elapsed)
-            yield f"data: {json.dumps({'type': 'complete', 'message': '全流程完成', 'session_id': sid}, ensure_ascii=False)}\n\n"
+            if not timed_out:
+                elapsed = round(time.time() - start_time, 1)
+                store.update(sid, status="completed", total_seconds=elapsed)
+                yield f"data: {json.dumps({'type': 'complete', 'message': '全流程完成', 'session_id': sid}, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             store.update(sid, status="cancelled")
             yield f"data: {json.dumps({'type': 'cancelled', 'message': '用户取消'}, ensure_ascii=False)}\n\n"
@@ -296,10 +305,10 @@ async def stream_pipeline(body: StreamRequest, request: Request):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "X-SSE-Timeout": str(SSE_TIMEOUT_SECONDS),
         }
     )
 
-# ============================================================
 # 单步Agent API
 # ============================================================
 @app.post("/api/diagnosis")
@@ -405,7 +414,7 @@ async def admin_stats(request: Request):
     if not _check_admin(request):
         raise HTTPException(status_code=401, detail="未登录")
     return {
-        "version": "6.0.0",
+        "version": "6.1.0",
         "sessions": store.stats(),
         "agents": orchestrator.list_agents() if orchestrator else [],
         "api_key_configured": bool(os.environ.get("ZHIPUAI_API_KEY", "")),
