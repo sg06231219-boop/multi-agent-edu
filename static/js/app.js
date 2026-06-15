@@ -571,41 +571,54 @@ async function runSSEPipeline(){
   streamRunning = true;
   document.getElementById('btnStart').disabled = true;
   document.getElementById('btnStop').style.display = 'block';
+  showThinkingIndicator();
 
-  const resp = await fetch('/api/stream',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({profile:p, debate_rounds:parseInt(document.getElementById('vRounds')?.textContent||'2')}),
-  });
-  if(!resp.ok) throw new Error('SSE '+resp.status);
+  try {
+    const resp = await fetch('/api/stream',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({profile:p, debate_rounds:parseInt(document.getElementById('vRounds')?.textContent||'2')}),
+    });
+    if(!resp.ok) throw new Error('SSE '+resp.status);
 
-  const reader = resp.body.getReader();
-  const dec = new TextDecoder();
-  let buf='';
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf='';
+    let sseCompleted = false;
 
-  while(true){
-    const {done, value} = await reader.read();
-    if(done) break;
-    buf += dec.decode(value,{stream:true});
-    const lines = buf.split('\n');
-    buf = lines.pop()||'';
-    for(const line of lines){
-      if(line.startsWith('data: ')){
-        const raw = line.slice(6);
-        if(raw==='[DONE]'){ streamRunning=false; break; }
-        try {
-          const evt = JSON.parse(raw);
-          handleSSEEvent(evt);
-        }catch(e){}
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value,{stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop()||'';
+      for(const line of lines){
+        if(line.startsWith('data: ')){
+          const raw = line.slice(6);
+          if(raw==='[DONE]'){ sseCompleted=true; streamRunning=false; break; }
+          try {
+            const evt = JSON.parse(raw);
+            hideThinkingIndicator();
+            handleSSEEvent(evt);
+          }catch(e){}
+        }
       }
+      if(!streamRunning) break;
     }
-    if(!streamRunning) break;
+
+    // SSE stream ended without complete event - possible timeout/disconnect
+    if(!sseCompleted && streamRunning){
+      showSSEInterrupted();
+    }
+  } catch(e) {
+    hideThinkingIndicator();
+    showSSEInterrupted(e.message);
   }
 
   streamRunning = false;
   document.getElementById('btnStart').disabled = false;
   document.getElementById('btnStop').style.display = 'none';
-  log('✅ 全流程完成','success');
+  hideThinkingIndicator();
 }
 
 function handleSSEEvent(evt){
@@ -615,6 +628,16 @@ function handleSSEEvent(evt){
   const step = evt.step;
   const agent = evt.agent;
   const result = evt.result;
+
+  // 处理SSE超时事件
+  if(evtType === 'timeout'){
+    log('⚠️ ' + (evt.message || '服务器响应超时，已返回部分结果'),'warn');
+    showSSEInterrupted('服务器响应超时');
+    if(evt.completed_agents && evt.completed_agents.length > 0){
+      log('已完成Agent: ' + evt.completed_agents.join(', '),'info');
+    }
+    return;
+  }
 
   // 映射后端事件类型到前端status
   let status = evt.status; // 如果后端已提供status则直接用
@@ -1172,6 +1195,61 @@ function buildCardBody(name, data){
   return '<div style="color:var(--muted);font-size:11px">无数据</div>';
 }
 
+
+// ============ 思考动画 & SSE中断处理 ============
+let thinkingTimer = null;
+function showThinkingIndicator(){
+  const rg = document.getElementById('resultsArea');
+  if(!rg) return;
+  let el = document.getElementById('thinkingIndicator');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'thinkingIndicator';
+    el.className = 'thinking-indicator';
+    el.innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div><div class="thinking-text">正在思考中...</div>';
+    rg.prepend(el);
+  }
+  el.style.display = 'flex';
+  // Animate dots text
+  let dots = 0;
+  clearInterval(thinkingTimer);
+  const textEl = el.querySelector('.thinking-text');
+  thinkingTimer = setInterval(()=>{
+    dots = (dots+1) % 4;
+    if(textEl) textEl.textContent = '正在思考中' + '.'.repeat(dots);
+  }, 500);
+}
+function hideThinkingIndicator(){
+  clearInterval(thinkingTimer);
+  const el = document.getElementById('thinkingIndicator');
+  if(el) el.style.display = 'none';
+}
+function showSSEInterrupted(reason){
+  const rg = document.getElementById('resultsArea');
+  if(!rg) return;
+  // Remove any existing interrupt notice
+  const old = document.getElementById('sseInterrupted');
+  if(old) old.remove();
+  const el = document.createElement('div');
+  el.id = 'sseInterrupted';
+  el.className = 'sse-interrupted';
+  el.innerHTML = '<div class="interrupt-icon">⚠️</div>' +
+    '<div class="interrupt-text">' +
+    (reason ? '连接中断：' + esc(reason) : '响应时间较长，流式连接已中断') +
+    '</div>' +
+    '<div class="interrupt-hint">这可能是因为服务器响应超时或网络波动。已完成的Agent结果已保留。</div>' +
+    '<button class="retry-btn" onclick="retryPipeline()">🔄 重新开始</button>' +
+    '<button class="retry-btn secondary" onclick="document.getElementById(\'sseInterrupted\').remove()">关闭</button>';
+  rg.prepend(el);
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  log('⚠️ SSE流中断，点击重试或使用前端直调模式','warn');
+}
+function retryPipeline(){
+  document.getElementById('sseInterrupted')?.remove();
+  hideThinkingIndicator();
+  startPipeline();
+}
+
 // ============ 测验 ============
 function renderQuizHTML(qs){
   let h = '';
@@ -1585,6 +1663,26 @@ function showToast(msg,dur=2000){
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Inject thinking/interrupt/retry styles
+  const style = document.createElement('style');
+  style.textContent = `
+    .thinking-indicator{display:flex;align-items:center;gap:10px;padding:14px 18px;background:rgba(0,232,176,.06);border:1px solid rgba(0,232,176,.15);border-radius:10px;margin-bottom:10px}
+    .thinking-dots{display:flex;gap:4px}
+    .thinking-dots span{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:thinkingBounce 1.2s ease-in-out infinite}
+    .thinking-dots span:nth-child(2){animation-delay:.2s}
+    .thinking-dots span:nth-child(3){animation-delay:.4s}
+    @keyframes thinkingBounce{0%,80%,100%{transform:scale(0.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+    .thinking-text{font-size:13px;color:var(--accent);font-weight:600}
+    .sse-interrupted{padding:16px 18px;background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.2);border-radius:10px;margin-bottom:10px;text-align:center}
+    .interrupt-icon{font-size:28px;margin-bottom:6px}
+    .interrupt-text{font-size:13px;color:var(--warn);font-weight:700;margin-bottom:4px}
+    .interrupt-hint{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+    .retry-btn{padding:6px 16px;border-radius:8px;border:1px solid var(--accent);background:rgba(0,232,176,.1);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;margin:0 4px;transition:all .2s}
+    .retry-btn:hover{background:rgba(0,232,176,.2);transform:translateY(-1px)}
+    .retry-btn.secondary{border-color:var(--border);color:var(--muted);background:transparent}
+    .retry-btn.secondary:hover{border-color:var(--muted)}
+  `;
+  document.head.appendChild(style);
   initTopology();
   document.getElementById('btnModel').textContent = '🤖 '+{deepseek:'DeepSeek',zhipu:'GLM','openai-compat':'OpenAI'}[currentModel]||'🤖 模型';
   if(currentApiKey) log('🔑 Key已加载','info');
