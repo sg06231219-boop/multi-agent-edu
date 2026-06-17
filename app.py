@@ -2,7 +2,7 @@
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
 7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
-v6.1.0 - SSE超时优雅降级 + 前端体验优化
+v6.2.0 - 7-Agent Prompt全面重写：角色人格化+反模板+对抗性指令
 """
 import os
 import json
@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="6.1.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="6.2.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
@@ -242,7 +242,7 @@ async def health():
     has_api_key = bool(os.environ.get("ZHIPUAI_API_KEY", ""))
     return {
         "status": "ok" if has_api_key else "degraded",
-        "version": "6.1.0",
+        "version": "6.2.0",
         "agents": agents_list,
         "ai_backend": "glm-4-flash",
         "api_key_configured": has_api_key,
@@ -295,8 +295,8 @@ async def stream_pipeline(body: StreamRequest, request: Request):
             store.update(sid, status="cancelled")
             yield f"data: {json.dumps({'type': 'cancelled', 'message': '用户取消'}, ensure_ascii=False)}\n\n"
         except Exception as e:
-            store.update(sid, status="error", error=str(e))
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            store.update(sid, status="error", error="internal_error")
+            yield f"data: {json.dumps({'type': 'error', 'message': '处理出错，请重试'}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(
         event_generator(),
@@ -317,7 +317,7 @@ async def run_diagnosis(body: StartRequest, request: Request):
     try:
         return await orchestrator.run_agent("diagnosis", profile=body.profile.model_dump())
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/generate")
 async def run_generate(body: GenerateRequest, request: Request):
@@ -325,7 +325,7 @@ async def run_generate(body: GenerateRequest, request: Request):
     try:
         return await orchestrator.run_agent("knowledge_gen", diagnosis=body.diagnosis)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/review")
 async def run_review(body: ReviewRequest, request: Request):
@@ -333,7 +333,7 @@ async def run_review(body: ReviewRequest, request: Request):
     try:
         return await orchestrator.run_agent("reviewer", content=body.content, source_refs=body.source_refs)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/quiz")
 async def run_quiz(body: QuizRequest, request: Request):
@@ -341,7 +341,7 @@ async def run_quiz(body: QuizRequest, request: Request):
     try:
         return await orchestrator.run_agent("quiz", knowledge=body.knowledge, difficulty=body.difficulty)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/practice")
 async def run_practice(body: PracticeRequest, request: Request):
@@ -349,7 +349,7 @@ async def run_practice(body: PracticeRequest, request: Request):
     try:
         return await orchestrator.run_agent("practice_guide", topic=body.topic, level=body.level)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/feedback")
 async def submit_feedback(body: FeedbackRequest, request: Request):
@@ -357,7 +357,7 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
     try:
         iteration = await orchestrator.run_agent("iteration", quiz_result=body.quiz_result, diagnosis=body.diagnosis, knowledge=body.knowledge)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     
     decision = iteration.get("decision", "consolidate")
     adjustments = iteration.get("adjustments", {})
@@ -371,7 +371,7 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
         else:
             new_content = await orchestrator.run_agent("knowledge_gen", diagnosis=body.diagnosis, revision_hints=adjustments.get("focus_topics", []))
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     
     return {"iteration_decision": iteration, "new_content": new_content}
 
@@ -381,7 +381,7 @@ async def embed_socratic(body: SocraticEmbedRequest, request: Request):
     try:
         return await orchestrator.run_agent("socratic", knowledge=body.knowledge, mode="embed_questions")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/socratic/chat")
 async def socratic_chat(body: SocraticChatRequest, request: Request):
@@ -389,7 +389,7 @@ async def socratic_chat(body: SocraticChatRequest, request: Request):
     try:
         return await orchestrator.run_agent("socratic", knowledge=body.knowledge, conversation_history=body.conversation_history, mode="respond")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 # ============================================================
 # 管理员 API
@@ -414,7 +414,7 @@ async def admin_stats(request: Request):
     if not _check_admin(request):
         raise HTTPException(status_code=401, detail="未登录")
     return {
-        "version": "6.1.0",
+        "version": "6.2.0",
         "sessions": store.stats(),
         "agents": orchestrator.list_agents() if orchestrator else [],
         "api_key_configured": bool(os.environ.get("ZHIPUAI_API_KEY", "")),
@@ -486,7 +486,7 @@ async def ws_pipeline(websocket: WebSocket):
         pass
     except RuntimeError as e:
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "连接异常，请刷新重试"})
         except:
             pass
 
@@ -522,9 +522,9 @@ async def generate_report(body: StartRequest, request: Request):
             quiz_result=quiz, diagnosis=diagnosis, knowledge=knowledge)
         
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
     
     # 构建可视化报告数据
     report = _build_visual_report(profile, diagnosis, knowledge, review, quiz, iteration)
@@ -732,7 +732,7 @@ async def search_knowledge_api(request: Request):
         results = search_knowledge(query, top_k=top_k, source_filter=source_filter)
         return {"query": query, "results": results, "count": len(results)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="搜索失败，请重试")
 
 @app.get("/api/knowledge/stats")
 async def knowledge_stats():
@@ -742,7 +742,7 @@ async def knowledge_stats():
         engine = get_search_engine()
         return engine.get_stats()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取统计失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="获取统计失败，请重试")
 
 # ============================================================
 # Agent结果解析 API（前端直调LLM后，后端解析结构化数据）
@@ -780,9 +780,9 @@ async def process_agent_output(request: Request):
         parsed["_meta"] = {"agent": agent_name, "parsed": True, "valid": is_valid, "errors": errors, "source": "client_llm"}
         return {"ok": True, "result": parsed, "valid": is_valid, "errors": errors}
     except ValueError as e:
-        return {"ok": False, "error": str(e), "raw_output": llm_output[:500]}
+        return {"ok": False, "error": "处理失败"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="处理失败，请重试")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
