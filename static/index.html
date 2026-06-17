@@ -9,6 +9,10 @@
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+<!-- 阅读进度条 -->
+<div class="reading-progress" id="readingProgress"></div>
+<!-- 回到顶部 -->
+<button class="back-to-top" id="backToTop" title="回到顶部">↑</button>
 
 <!-- 欢迎引导 -->
 <div class="onboarding-overlay" id="onboarding">
@@ -43,6 +47,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="mode-toggle" id="modeToggle" title="切换亮/暗模式">🌓</button>
     <button data-action="showModelModal" class="hdr-btn" id="btnModel">🤖 模型</button>
     <button data-action="showApiKeyModal" class="hdr-btn" id="btnApiKey">🔑 Key</button>
     <span class="badge-live" id="liveBadge">● LIVE</span>
@@ -237,5 +242,92 @@
 </div>
 
 <script src="/static/js/app.js"></script>
+<script>
+// ============ UX增强: 进度条 + 回到顶部 + 亮暗模式 ============
+(function(){
+  // --- 阅读进度条 ---
+  const progressBar = document.getElementById('readingProgress');
+  function updateReadingProgress(){
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+    if(progressBar) progressBar.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', updateReadingProgress, {passive:true});
+  window.addEventListener('resize', updateReadingProgress, {passive:true});
+
+  // --- 回到顶部按钮 ---
+  const backToTop = document.getElementById('backToTop');
+  function toggleBackToTop(){
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    if(backToTop){
+      if(scrollTop > 400) backToTop.classList.add('visible');
+      else backToTop.classList.remove('visible');
+    }
+  }
+  window.addEventListener('scroll', toggleBackToTop, {passive:true});
+  if(backToTop){
+    backToTop.addEventListener('click', function(){
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  }
+
+  // --- 亮/暗模式切换 ---
+  const modeToggle = document.getElementById('modeToggle');
+  const savedMode = localStorage.getItem('theme-mode');
+  if(savedMode === 'light'){
+    document.body.classList.add('light-mode');
+    if(modeToggle) modeToggle.textContent = '🌙';
+  }
+  if(modeToggle){
+    modeToggle.addEventListener('click', function(){
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      localStorage.setItem('theme-mode', isLight ? 'light' : 'dark');
+      modeToggle.textContent = isLight ? '🌙' : '🌓';
+    });
+  }
+
+  // --- 骨架屏增强: 包装原始 showSkeleton ---
+  // 在app.js加载后，包装showSkeleton以使用增强骨架
+  const origShowSkeleton = typeof showSkeleton === 'function' ? showSkeleton : null;
+  if(origShowSkeleton){
+    window.showSkeleton = function(name){
+      const rg = document.getElementById('resultsArea');
+      if(!rg) return;
+      // 如果已有骨架则跳过
+      if(document.getElementById('sk-'+name)) return;
+      const icon = (typeof AGENT_ICONS!=='undefined') ? (AGENT_ICONS[name]||'⏳') : '⏳';
+      const label = (typeof AGENT_LABELS!=='undefined') ? (AGENT_LABELS[name]||name) : name;
+      const color = (typeof AGENT_COLORS!=='undefined') ? (AGENT_COLORS[name]||'var(--accent)') : 'var(--accent)';
+      const sk = document.createElement('div');
+      sk.className = 'skeleton-card';
+      sk.id = 'sk-'+name;
+      sk.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+          '<div class="skeleton skeleton-avatar"></div>'+
+          '<div class="skeleton skeleton-title" style="width:140px"></div>'+
+        '</div>'+
+        '<div class="skeleton skeleton-line w80"></div>'+
+        '<div class="skeleton skeleton-line w60"></div>'+
+        '<div class="skeleton skeleton-line w80"></div>'+
+        '<div class="skeleton skeleton-line w40"></div>'+
+        '<div style="margin-top:10px">'+
+          '<div class="skeleton-bubble" style="width:75%">'+
+            '<div class="skeleton skeleton-line w60"></div>'+
+            '<div class="skeleton skeleton-line w80"></div>'+
+          '</div>'+
+        '</div>';
+      rg.appendChild(sk);
+      // 滚动到骨架位置
+      sk.scrollIntoView({behavior:'smooth', block:'nearest'});
+    };
+  }
+
+  // --- 初始化 ---
+  updateReadingProgress();
+  toggleBackToTop();
+})();
+</script>
 </body>
 </html>
