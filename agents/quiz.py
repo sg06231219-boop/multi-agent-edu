@@ -93,9 +93,9 @@ class QuizAgent(BaseAgent):
             "questions": [
                 {"id": 1, "type": "choice", "difficulty": "easy", "question": "Python中用什么关键字定义函数？", "options": ["function", "def", "func", "define"], "correct": 1, "explanation": "Python使用def关键字定义函数", "knowledge_point": "函数定义"},
                 {"id": 2, "type": "choice", "difficulty": "easy", "question": "以下哪个是Python的列表？", "options": ["(1,2,3)", "[1,2,3]", "{1,2,3}", "<1,2,3>"], "correct": 1, "explanation": "Python列表使用方括号[]", "knowledge_point": "数据类型"},
-                {"id": 3, "type": "short_answer", "difficulty": "medium", "question": "请解释什么是变量作用域", "options": [], "correct": 0, "explanation": "包括局部变量和全局变量", "knowledge_point": "作用域"},
+                {"id": 3, "type": "choice", "difficulty": "medium", "question": "Python中变量的作用域是指什么？", "options": ["变量存储的数据类型", "变量能被访问的代码范围", "变量的命名规则", "变量的内存地址"], "correct": 1, "explanation": "作用域决定了变量在哪些代码区域可以被访问", "knowledge_point": "作用域"},
                 {"id": 4, "type": "choice", "difficulty": "medium", "question": "Python中__init__方法的作用是？", "options": ["销毁对象", "初始化对象", "继承父类", "重载运算符"], "correct": 1, "explanation": "__init__是构造方法，用于初始化对象", "knowledge_point": "面向对象"},
-                {"id": 5, "type": "coding", "difficulty": "hard", "question": "写一个函数，接收列表，返回其中所有偶数的平方", "options": [], "correct": 0, "explanation": "使用列表推导式筛选偶数并求平方", "knowledge_point": "列表推导式+条件筛选"},
+                {"id": 5, "type": "choice", "difficulty": "hard", "question": "以下哪个表达式能正确返回列表中所有偶数的平方？", "options": ["[x^2 for x in lst if x%2==0]", "[x**2 for x in lst if x%2==0]", "filter(lambda x:x%2==0, lst)", "list(map(lambda x:x*x, lst))"], "correct": 1, "explanation": "列表推导式 [x**2 for x in lst if x%2==0] 正确筛选偶数并求平方", "knowledge_point": "列表推导式+条件筛选"},
             ],
             "total_score": 100,
             "passing_score": 60,

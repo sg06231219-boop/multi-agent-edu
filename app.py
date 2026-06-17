@@ -2,7 +2,7 @@
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
 7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
-v4.0.0 - 全面UI重构 + 多模型支持(DeepSeek-V3/GLM-4-Flash) + TF-IDF搜索 + 前端直调API
+v6.1.0 - SSE超时优雅降级 + 前端体验优化
 """
 import os
 import json
@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="4.1.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="6.1.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
@@ -141,6 +141,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+# SSE超时中间件（Render 30秒硬限制，留5秒余量）
+# ============================================================
+SSE_TIMEOUT_SECONDS = 25
+
+@app.middleware("http")
+async def sse_timeout_middleware(request: Request, call_next):
+    """对SSE流式端点注入超时检测，防止Render 30s硬限制截断响应"""
+    if request.url.path == "/api/stream":
+        request.state.sse_deadline = time.time() + SSE_TIMEOUT_SECONDS
+    response = await call_next(request)
+    return response
+
 
 # ============================================================
 # 请求模型
@@ -224,38 +238,21 @@ async def admin_page():
 # ============================================================
 @app.get("/api/health")
 async def health():
-    agents_list = orchestrator.list_agents() if orchestrator else []
+    agents_list = ["diagnosis", "knowledge_gen", "reviewer", "practice_guide", "quiz", "iteration", "socratic"]
     has_api_key = bool(os.environ.get("ZHIPUAI_API_KEY", ""))
     return {
         "status": "ok" if has_api_key else "degraded",
+        "version": "6.1.0",
         "agents": agents_list,
+        "ai_backend": "glm-4-flash",
         "api_key_configured": has_api_key,
-        "version": "4.1.0",
     }
 
 # ============================================================
 # 全流程API
 # ============================================================
-@app.post("/api/start")
-async def start_session(body: StartRequest, request: Request):
-    _check_rate(request)
-    learner_profile = body.profile.model_dump()
-    sid = store.create(learner_profile)
-    store.update(sid, status="running")
-    try:
-        result = await orchestrator.run_full_pipeline(learner_profile)
-        store.update(sid, status="completed", results=result, 
-                     agent_count=len([k for k in result if k.startswith("agent_") or k in ("diagnosis","knowledge","review","practice","quiz","iteration","socratic")]),
-                     total_seconds=result.get("_meta", {}).get("total_seconds", 0))
-        result["session_id"] = sid
-    except RuntimeError as e:
-        store.update(sid, status="error", error=str(e))
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        store.update(sid, status="error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-    return result
-
+# SSE流式端点（含超时优雅降级）
+# ============================================================
 @app.post("/api/stream")
 async def stream_pipeline(body: StreamRequest, request: Request):
     _check_rate(request)
@@ -263,12 +260,23 @@ async def stream_pipeline(body: StreamRequest, request: Request):
     sid = store.create(profile)
     store.update(sid, status="running")
     start_time = time.time()
+    sse_deadline = getattr(request.state, "sse_deadline", time.time() + SSE_TIMEOUT_SECONDS)
+    timed_out = False
     
     async def event_generator():
+        nonlocal timed_out
         try:
             yield f"data: {json.dumps({'type': 'start', 'session_id': sid, 'profile': profile}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0)
             async for event in orchestrator.run_streaming(profile):
+                # 检查SSE超时：如果即将达到Render 30s限制，优雅降级
+                if time.time() > sse_deadline:
+                    timed_out = True
+                    completed = store.get(sid).get("results", {}) if store.get(sid) else {}
+                    yield f"data: {json.dumps({'type': 'timeout', 'message': '响应时间较长，已返回部分结果，请使用前端直调模式完成剩余步骤', 'completed_agents': list(completed.keys())}, ensure_ascii=False)}\n\n"
+                    store.update(sid, status="timeout", error="SSE超时，部分结果已返回")
+                    break
+                
                 # 记录Agent完成事件
                 if event.get("type") == "agent_done":
                     agent = event.get("agent", "")
@@ -279,15 +287,16 @@ async def stream_pipeline(body: StreamRequest, request: Request):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0)
             
-            elapsed = round(time.time() - start_time, 1)
-            store.update(sid, status="completed", total_seconds=elapsed)
-            yield f"data: {json.dumps({'type': 'complete', 'message': '全流程完成', 'session_id': sid}, ensure_ascii=False)}\n\n"
+            if not timed_out:
+                elapsed = round(time.time() - start_time, 1)
+                store.update(sid, status="completed", total_seconds=elapsed)
+                yield f"data: {json.dumps({'type': 'complete', 'message': '全流程完成', 'session_id': sid}, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             store.update(sid, status="cancelled")
             yield f"data: {json.dumps({'type': 'cancelled', 'message': '用户取消'}, ensure_ascii=False)}\n\n"
         except Exception as e:
-            store.update(sid, status="error", error=str(e))
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            store.update(sid, status="error", error="internal_error")
+            yield f"data: {json.dumps({'type': 'error', 'message': '处理出错，请重试'}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(
         event_generator(),
@@ -296,10 +305,10 @@ async def stream_pipeline(body: StreamRequest, request: Request):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "X-SSE-Timeout": str(SSE_TIMEOUT_SECONDS),
         }
     )
 
-# ============================================================
 # 单步Agent API
 # ============================================================
 @app.post("/api/diagnosis")
@@ -308,7 +317,7 @@ async def run_diagnosis(body: StartRequest, request: Request):
     try:
         return await orchestrator.run_agent("diagnosis", profile=body.profile.model_dump())
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/generate")
 async def run_generate(body: GenerateRequest, request: Request):
@@ -316,7 +325,7 @@ async def run_generate(body: GenerateRequest, request: Request):
     try:
         return await orchestrator.run_agent("knowledge_gen", diagnosis=body.diagnosis)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/review")
 async def run_review(body: ReviewRequest, request: Request):
@@ -324,7 +333,7 @@ async def run_review(body: ReviewRequest, request: Request):
     try:
         return await orchestrator.run_agent("reviewer", content=body.content, source_refs=body.source_refs)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/quiz")
 async def run_quiz(body: QuizRequest, request: Request):
@@ -332,7 +341,7 @@ async def run_quiz(body: QuizRequest, request: Request):
     try:
         return await orchestrator.run_agent("quiz", knowledge=body.knowledge, difficulty=body.difficulty)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/practice")
 async def run_practice(body: PracticeRequest, request: Request):
@@ -340,7 +349,7 @@ async def run_practice(body: PracticeRequest, request: Request):
     try:
         return await orchestrator.run_agent("practice_guide", topic=body.topic, level=body.level)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/feedback")
 async def submit_feedback(body: FeedbackRequest, request: Request):
@@ -348,7 +357,7 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
     try:
         iteration = await orchestrator.run_agent("iteration", quiz_result=body.quiz_result, diagnosis=body.diagnosis, knowledge=body.knowledge)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     
     decision = iteration.get("decision", "consolidate")
     adjustments = iteration.get("adjustments", {})
@@ -362,7 +371,7 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
         else:
             new_content = await orchestrator.run_agent("knowledge_gen", diagnosis=body.diagnosis, revision_hints=adjustments.get("focus_topics", []))
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     
     return {"iteration_decision": iteration, "new_content": new_content}
 
@@ -372,7 +381,7 @@ async def embed_socratic(body: SocraticEmbedRequest, request: Request):
     try:
         return await orchestrator.run_agent("socratic", knowledge=body.knowledge, mode="embed_questions")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 @app.post("/api/socratic/chat")
 async def socratic_chat(body: SocraticChatRequest, request: Request):
@@ -380,7 +389,7 @@ async def socratic_chat(body: SocraticChatRequest, request: Request):
     try:
         return await orchestrator.run_agent("socratic", knowledge=body.knowledge, conversation_history=body.conversation_history, mode="respond")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
 
 # ============================================================
 # 管理员 API
@@ -405,7 +414,7 @@ async def admin_stats(request: Request):
     if not _check_admin(request):
         raise HTTPException(status_code=401, detail="未登录")
     return {
-        "version": "4.1.0",
+        "version": "6.1.0",
         "sessions": store.stats(),
         "agents": orchestrator.list_agents() if orchestrator else [],
         "api_key_configured": bool(os.environ.get("ZHIPUAI_API_KEY", "")),
@@ -477,7 +486,7 @@ async def ws_pipeline(websocket: WebSocket):
         pass
     except RuntimeError as e:
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "连接异常，请刷新重试"})
         except:
             pass
 
@@ -513,9 +522,9 @@ async def generate_report(body: StartRequest, request: Request):
             quiz_result=quiz, diagnosis=diagnosis, knowledge=knowledge)
         
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="服务暂时不可用，请稍后重试")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
     
     # 构建可视化报告数据
     report = _build_visual_report(profile, diagnosis, knowledge, review, quiz, iteration)
@@ -723,7 +732,7 @@ async def search_knowledge_api(request: Request):
         results = search_knowledge(query, top_k=top_k, source_filter=source_filter)
         return {"query": query, "results": results, "count": len(results)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="搜索失败，请重试")
 
 @app.get("/api/knowledge/stats")
 async def knowledge_stats():
@@ -733,7 +742,7 @@ async def knowledge_stats():
         engine = get_search_engine()
         return engine.get_stats()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取统计失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="获取统计失败，请重试")
 
 # ============================================================
 # Agent结果解析 API（前端直调LLM后，后端解析结构化数据）
@@ -771,9 +780,9 @@ async def process_agent_output(request: Request):
         parsed["_meta"] = {"agent": agent_name, "parsed": True, "valid": is_valid, "errors": errors, "source": "client_llm"}
         return {"ok": True, "result": parsed, "valid": is_valid, "errors": errors}
     except ValueError as e:
-        return {"ok": False, "error": str(e), "raw_output": llm_output[:500]}
+        return {"ok": False, "error": "处理失败"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="处理失败，请重试")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

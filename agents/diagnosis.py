@@ -61,25 +61,43 @@ class DiagnosisAgent(BaseAgent):
         return result
     
     def _fallback_diagnosis(self, profile: dict, error: str) -> dict:
-        """LLM失败时的兜底诊断"""
+        """LLM失败时的兜底诊断 - 基于profile生成真实感诊断"""
         level = profile.get("level", "beginner")
+        background = profile.get("background", "")
+        goal = profile.get("goal", "学习AI/编程技能")
+        
         level_map = {
-            "beginner": {"level_score": 25, "strengths": ["学习热情"], "blind_spots": ["编程基础", "算法思维", "数据结构"]},
-            "intermediate": {"level_score": 55, "strengths": ["编程基础", "逻辑思维"], "blind_spots": ["系统设计", "性能优化", "AI算法"]},
-            "advanced": {"level_score": 80, "strengths": ["项目经验", "系统设计"], "blind_spots": ["前沿AI技术", "大规模系统"]},
+            "beginner": {"level_score": 25, "strengths": ["学习热情", "基础认知"], "blind_spots": ["编程基础", "算法思维", "数据结构", "开发工具"]},
+            "intermediate": {"level_score": 55, "strengths": ["编程基础", "逻辑思维", "基本调试"], "blind_spots": ["系统设计", "性能优化", "AI算法", "工程规范"]},
+            "advanced": {"level_score": 80, "strengths": ["项目经验", "系统设计", "代码优化"], "blind_spots": ["前沿AI技术", "大规模系统", "底层原理"]},
         }
         info = level_map.get(level, level_map["beginner"])
+        
+        # 从background提取潜在信息
+        if "python" in background.lower():
+            info["strengths"].append("Python语法基础")
+            if "AI" in info["blind_spots"]: info["blind_spots"].remove("AI")
+        if "数学" in background or "统计" in background:
+            info["strengths"].append("数学基础")
+        
+        focus = info["blind_spots"][0] if info["blind_spots"] else "编程基础"
+        # 从goal调整focus
+        if "AI" in goal or "机器学习" in goal: focus = "AI算法与框架"
+        elif "web" in goal.lower() or "前端" in goal: focus = "Web开发技术"
+        elif "数据" in goal: focus = "数据分析与处理"
+        
         return {
             "learner_level": level,
             "level_score": info["level_score"],
-            "strengths": info["strengths"],
-            "blind_spots": info["blind_spots"],
-            "focus_topic": info["blind_spots"][0] if info["blind_spots"] else "编程基础",
+            "strengths": info["strengths"][:5],
+            "blind_spots": info["blind_spots"][:5],
+            "focus_topic": focus,
             "learning_path": [
                 {"phase": "基础入门", "topics": info["blind_spots"][:2], "estimated_hours": 20},
-                {"phase": "进阶提升", "topics": ["项目实践", "代码优化"], "estimated_hours": 30},
+                {"phase": "核心提升", "topics": [focus, "项目实践"], "estimated_hours": 30},
+                {"phase": "综合应用", "topics": ["实战项目", "代码优化"], "estimated_hours": 25},
             ],
-            "summary": f"学习者自评{level}级，建议从{info['blind_spots'][0]}开始系统学习",
+            "summary": f"学习者自评{level}级，核心强项{info['strengths'][0] if info['strengths'] else '待发掘'}，建议从{focus}开始系统学习",
             "fallback": True,
             "error": error,
         }
