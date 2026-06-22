@@ -2,7 +2,7 @@
 多智能体协同学习平台 - 应用入口
 面向AI/编程领域技能培训的个性化学习资源生成系统
 7个Agent协同：诊断→生成→审核→实操→测试→迭代→导学
-v6.1.0 - SSE超时优雅降级 + 前端体验优化
+v6.2.0 - 7-Agent Prompt全面重写：角色人格化+反模板+对抗性指令
 """
 import os
 import json
@@ -130,7 +130,7 @@ async def lifespan(app):
     print("7 agents registered, system ready")
     yield
 
-app = FastAPI(title="多智能体协同学习平台", version="6.1.0", lifespan=lifespan)
+app = FastAPI(title="多智能体协同学习平台", version="6.2.0", lifespan=lifespan)
 
 # CORS
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
@@ -242,7 +242,7 @@ async def health():
     has_api_key = bool(os.environ.get("ZHIPUAI_API_KEY", ""))
     return {
         "status": "ok" if has_api_key else "degraded",
-        "version": "6.1.0",
+        "version": "6.2.0",
         "agents": agents_list,
         "ai_backend": "glm-4-flash",
         "api_key_configured": has_api_key,
@@ -414,7 +414,7 @@ async def admin_stats(request: Request):
     if not _check_admin(request):
         raise HTTPException(status_code=401, detail="未登录")
     return {
-        "version": "6.1.0",
+        "version": "6.2.0",
         "sessions": store.stats(),
         "agents": orchestrator.list_agents() if orchestrator else [],
         "api_key_configured": bool(os.environ.get("ZHIPUAI_API_KEY", "")),
