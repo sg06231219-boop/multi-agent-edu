@@ -1,3 +1,13 @@
+---
+title: Multi Agent Edu
+emoji: 📚
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 多智能体协同学习平台
 
 > XH-202630「领域知识个性化生成与多智能体协同决策系统研究」参赛项目

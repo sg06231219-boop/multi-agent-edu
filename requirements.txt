@@ -1,5 +1,6 @@
 fastapi==0.136.0
 uvicorn==0.44.0
+httpx==0.28.1
 zhipuai==2.1.5.20250825
 openai==2.32.0
 requests==2.33.1
