@@ -795,6 +795,11 @@ async def robots():
     from fastapi.responses import FileResponse
     return FileResponse("static/robots.txt", media_type="text/plain")
 
+@app.get("/sitemap.xml")
+async def sitemap():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/sitemap.xml", media_type="application/xml")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
