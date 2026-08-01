@@ -404,10 +404,9 @@ async def admin_login(body: AdminLoginRequest, response: Response):
     return response
 
 @app.post("/api/admin/logout")
-async def admin_logout():
-    response = JSONResponse({"ok": True})
+async def admin_logout(response: Response):
     response.delete_cookie(ADMIN_COOKIE_NAME)
-    return response
+    return {"ok": True}
 
 @app.get("/api/admin/stats")
 async def admin_stats(request: Request):
